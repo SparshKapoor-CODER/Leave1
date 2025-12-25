@@ -1,0 +1,418 @@
+{% extends "base.html" %}
+
+{% block title %}Proctor Dashboard - VIT LMS{% endblock %}
+
+{% block extra_css %}
+<style>
+    .proctor-stats {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: 15px;
+        margin-bottom: 25px;
+    }
+    
+    .stat-box {
+        background: white;
+        padding: 15px;
+        border-radius: 8px;
+        text-align: center;
+        box-shadow: 0 3px 8px rgba(0,0,0,0.08);
+    }
+    
+    .stat-number {
+        font-size: 1.8rem;
+        font-weight: bold;
+        margin: 5px 0;
+    }
+    
+    .student-list {
+        max-height: 300px;
+        overflow-y: auto;
+    }
+    
+    .student-item {
+        padding: 10px 15px;
+        border-bottom: 1px solid #eee;
+        transition: background 0.2s;
+    }
+    
+    .student-item:hover {
+        background: #f8f9fa;
+    }
+    
+    .action-buttons .btn {
+        margin: 2px;
+        font-size: 0.85rem;
+    }
+    
+    .leave-details-modal .modal-body {
+        max-height: 60vh;
+        overflow-y: auto;
+    }
+    
+    .tab-content {
+        padding-top: 20px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h1 class="h3 mb-0" style="color: var(--vit-blue);">
+            <i class="fas fa-chalkboard-teacher me-2"></i>Proctor Dashboard
+        </h1>
+        <p class="text-muted mb-0">Welcome, Dr. {{ proctor_name }}!</p>
+    </div>
+    <div class="d-flex gap-2">
+        <button class="btn btn-vit" data-bs-toggle="modal" data-bs-target="#studentListModal">
+            <i class="fas fa-users me-2"></i>My Students
+        </button>
+        <a href="{{ url_for('logout', role='proctor') }}" class="btn btn-outline-danger">
+            <i class="fas fa-sign-out-alt me-2"></i>Logout
+        </a>
+    </div>
+</div>
+
+<!-- Quick Stats -->
+<div class="proctor-stats">
+    <div class="stat-box">
+        <i class="fas fa-clock fa-2x text-warning"></i>
+        <div class="stat-number">{{ leaves|length }}</div>
+        <p class="mb-0">Pending</p>
+    </div>
+    <div class="stat-box">
+        <i class="fas fa-user-graduate fa-2x text-primary"></i>
+        <div class="stat-number" id="totalStudents">25</div>
+        <p class="mb-0">Students</p>
+    </div>
+    <div class="stat-box">
+        <i class="fas fa-calendar-check fa-2x text-success"></i>
+        <div class="stat-number" id="approvedToday">0</div>
+        <p class="mb-0">Approved Today</p>
+    </div>
+    <div class="stat-box">
+        <i class="fas fa-exclamation-triangle fa-2x text-danger"></i>
+        <div class="stat-number" id="emergencyLeaves">0</div>
+        <p class="mb-0">Emergency</p>
+    </div>
+</div>
+
+<!-- Pending Leaves Section -->
+<div class="card card-vit mb-4">
+    <div class="card-header-vit">
+        <h5 class="card-title mb-0">
+            <i class="fas fa-tasks me-2"></i>Pending Leave Applications
+        </h5>
+        <p class="mb-0 small">Review and take action on student leave requests</p>
+    </div>
+    <div class="card-body">
+        {% if leaves %}
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>Student</th>
+                        <th>Reg No</th>
+                        <th>Leave Type</th>
+                        <th>Duration</th>
+                        <th>Destination</th>
+                        <th>Parent Contacted</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for leave in leaves %}
+                    <tr>
+                        <td>
+                            <strong>{{ leave.student_name }}</strong><br>
+                            <small class="text-muted">{{ leave.hostel_block }} - {{ leave.room_number }}</small>
+                        </td>
+                        <td>
+                            <code>{{ leave.reg_number }}</code>
+                        </td>
+                        <td>
+                            <span class="badge bg-{{ 'danger' if leave.leave_type == 'emergency' else 'info' if leave.leave_type == 'medical' else 'primary' }}">
+                                {{ leave.leave_type|title }}
+                            </span>
+                        </td>
+                        <td>
+                            {{ leave.from_date }} to {{ leave.to_date }}<br>
+                            <small>{{ leave.from_time }} - {{ leave.to_time }}</small>
+                        </td>
+                        <td>
+                            <span class="d-inline-block text-truncate" style="max-width: 150px;">
+                                {{ leave.destination }}
+                            </span>
+                        </td>
+                        <td>
+                            {% if leave.parent_contacted %}
+                            <span class="badge bg-success">Yes</span>
+                            {% else %}
+                            <span class="badge bg-warning">No</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <div class="action-buttons">
+                                <button class="btn btn-sm btn-info" 
+                                        onclick="viewLeaveDetails({{ leave.leave_id }})"
+                                        data-bs-toggle="tooltip" title="View Details">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                                <a href="{{ url_for('approve_leave', leave_id=leave.leave_id) }}" 
+                                   class="btn btn-sm btn-success"
+                                   data-bs-toggle="tooltip" title="Approve Leave">
+                                    <i class="fas fa-check"></i>
+                                </a>
+                                <a href="{{ url_for('reject_leave', leave_id=leave.leave_id) }}" 
+                                   class="btn btn-sm btn-danger"
+                                   data-bs-toggle="tooltip" title="Reject Leave"
+                                   onclick="return confirm('Are you sure you want to reject this leave?')">
+                                    <i class="fas fa-times"></i>
+                                </a>
+                                {% if leave.leave_type == 'emergency' and not leave.parent_contacted %}
+                                <button class="btn btn-sm btn-warning"
+                                        onclick="contactParent({{ leave.leave_id }})"
+                                        data-bs-toggle="tooltip" title="Contact Parent">
+                                    <i class="fas fa-phone"></i>
+                                </button>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="text-center py-5">
+            <i class="fas fa-inbox fa-4x text-muted mb-3"></i>
+            <h5>No Pending Applications</h5>
+            <p class="text-muted">You have no pending leave applications to review.</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Recent Activity -->
+<div class="row">
+    <div class="col-md-6">
+        <div class="card card-vit h-100">
+            <div class="card-header-vit">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-history me-2"></i>Recent Activity
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="list-group list-group-flush">
+                    <div class="list-group-item">
+                        <i class="fas fa-check-circle text-success me-2"></i>
+                        <span>Approved leave for John Doe (21BCE1001)</span>
+                        <small class="text-muted d-block">Today, 10:30 AM</small>
+                    </div>
+                    <div class="list-group-item">
+                        <i class="fas fa-times-circle text-danger me-2"></i>
+                        <span>Rejected leave for Jane Smith (21BME1002)</span>
+                        <small class="text-muted d-block">Yesterday, 3:45 PM</small>
+                    </div>
+                    <div class="list-group-item">
+                        <i class="fas fa-user-plus text-primary me-2"></i>
+                        <span>Added new student: Raj Kumar (21BCE1005)</span>
+                        <small class="text-muted d-block">2 days ago</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6">
+        <div class="card card-vit h-100">
+            <div class="card-header-vit">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-chart-bar me-2"></i>Leave Statistics
+                </h5>
+            </div>
+            <div class="card-body">
+                <canvas id="leaveChart" height="200"></canvas>
+                <div class="mt-3 text-center">
+                    <small class="text-muted">
+                        <i class="fas fa-info-circle me-1"></i>
+                        Total leaves approved this month: <strong>42</strong>
+                    </small>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Student List Modal -->
+<div class="modal fade" id="studentListModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header" style="background: var(--vit-blue); color: white;">
+                <h5 class="modal-title">
+                    <i class="fas fa-users me-2"></i>My Students
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="student-list">
+                    {% for i in range(25) %}
+                    <div class="student-item">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <strong>Student {{ i+1 }}</strong><br>
+                                <small class="text-muted">Reg: 21BCE{{ 1000+i }}</small>
+                            </div>
+                            <div>
+                                <span class="badge bg-primary me-2">A Block</span>
+                                <button class="btn btn-sm btn-outline-primary">
+                                    <i class="fas fa-envelope"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Leave Details Modal -->
+<div class="modal fade leave-details-modal" id="leaveDetailsModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header" style="background: var(--vit-blue); color: white;">
+                <h5 class="modal-title">
+                    <i class="fas fa-file-alt me-2"></i>Leave Application Details
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="leaveDetailsContent">
+                <!-- Details will be loaded here -->
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    // Initialize chart
+    const ctx = document.getElementById('leaveChart').getContext('2d');
+    const leaveChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: ['Regular', 'Emergency', 'Medical'],
+            datasets: [{
+                label: 'Leaves Approved',
+                data: [25, 8, 9],
+                backgroundColor: [
+                    '#007bff',
+                    '#dc3545',
+                    '#17a2b8'
+                ],
+                borderWidth: 0
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: {
+                    display: false
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        stepSize: 5
+                    }
+                }
+            }
+        }
+    });
+    
+    // Update stats
+    document.addEventListener('DOMContentLoaded', function() {
+        // Count emergency leaves
+        const emergencyCount = document.querySelectorAll('.badge.bg-danger').length;
+        document.getElementById('emergencyLeaves').textContent = emergencyCount;
+    });
+    
+    function viewLeaveDetails(leaveId) {
+        // In a real application, you would fetch details from the server
+        const sampleDetails = `
+            <div class="leave-details">
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle me-2"></i>
+                    Leave ID: <strong>#${leaveId}</strong>
+                </div>
+                
+                <h6>Student Information:</h6>
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <p><strong>Name:</strong> John Doe</p>
+                        <p><strong>Registration:</strong> 21BCE1001</p>
+                    </div>
+                    <div class="col-md-6">
+                        <p><strong>Hostel:</strong> A Block - Room 101</p>
+                        <p><strong>Proctor:</strong> Dr. {{ proctor_name }}</p>
+                    </div>
+                </div>
+                
+                <h6>Leave Details:</h6>
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <p><strong>From:</strong> 2024-01-15 10:00 AM</p>
+                        <p><strong>To:</strong> 2024-01-18 06:00 PM</p>
+                    </div>
+                    <div class="col-md-6">
+                        <p><strong>Type:</strong> Regular Leave</p>
+                        <p><strong>Duration:</strong> 3 days 8 hours</p>
+                    </div>
+                </div>
+                
+                <h6>Destination:</h6>
+                <p>Chennai, Tamil Nadu</p>
+                
+                <h6>Reason:</h6>
+                <div class="border rounded p-3 mb-3">
+                    <p>Attending family function. Need to travel to Chennai for my cousin's wedding ceremony. All relatives will be gathering, and my presence is required for the traditional rituals.</p>
+                </div>
+                
+                <h6>Parent Contact:</h6>
+                <div class="alert alert-success">
+                    <i class="fas fa-check-circle me-2"></i>
+                    Parents have been contacted and have given consent.
+                </div>
+                
+                <div class="alert alert-warning">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    <strong>Note:</strong> Student has taken 2 leaves this month already. This will be the 3rd.
+                </div>
+            </div>
+        `;
+        
+        document.getElementById('leaveDetailsContent').innerHTML = sampleDetails;
+        const modal = new bootstrap.Modal(document.getElementById('leaveDetailsModal'));
+        modal.show();
+    }
+    
+    function contactParent(leaveId) {
+        if (confirm('Have you contacted the parent/guardian?')) {
+            // Mark as parent contacted
+            alert('Parent contacted for leave ID: ' + leaveId);
+            // Refresh page or update UI
+        }
+    }
+    
+    // Initialize tooltips
+    document.addEventListener('DOMContentLoaded', function() {
+        var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+        var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+            return new bootstrap.Tooltip(tooltipTriggerEl);
+        });
+    });
+</script>
+{% endblock %}

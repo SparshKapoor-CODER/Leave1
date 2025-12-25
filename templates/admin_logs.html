@@ -1,0 +1,457 @@
+{% extends "base.html" %}
+
+{% block title %}System Logs - Admin Panel{% endblock %}
+
+{% block extra_css %}
+<style>
+    .logs-container {
+        max-height: 600px;
+        overflow-y: auto;
+    }
+    
+    .log-entry {
+        border-left: 4px solid;
+        padding: 12px 15px;
+        margin-bottom: 10px;
+        background: white;
+        border-radius: 5px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        transition: all 0.3s ease;
+    }
+    
+    .log-entry:hover {
+        transform: translateX(5px);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    }
+    
+    .log-type-1 { border-left-color: #007bff; } /* Leave */
+    .log-type-2 { border-left-color: #28a745; } /* Verification */
+    .log-type-3 { border-left-color: #6c757d; } /* Admin */
+    .log-type-4 { border-left-color: #dc3545; } /* Security */
+    
+    .log-icon {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 18px;
+        margin-right: 15px;
+    }
+    
+    .log-search {
+        position: sticky;
+        top: 0;
+        z-index: 100;
+        background: white;
+        padding: 20px;
+        border-radius: 10px;
+        margin-bottom: 20px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+    }
+    
+    .time-badge {
+        font-family: monospace;
+        background: #f8f9fa;
+        padding: 3px 8px;
+        border-radius: 4px;
+        font-size: 0.85rem;
+    }
+    
+    .log-details {
+        max-height: 0;
+        overflow: hidden;
+        transition: max-height 0.3s ease;
+    }
+    
+    .log-details.show {
+        max-height: 500px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h1 class="h3 mb-0" style="color: #dc3545;">
+            <i class="fas fa-history me-2"></i>System Logs & Audit Trail
+        </h1>
+        <p class="text-muted mb-0">Total: {{ logs|length }} log entries</p>
+    </div>
+    <div class="d-flex gap-2">
+        <a href="{{ url_for('admin_dashboard') }}" class="btn btn-outline-secondary">
+            <i class="fas fa-arrow-left me-2"></i>Back
+        </a>
+        <button class="btn btn-vit" onclick="exportLogs()">
+            <i class="fas fa-file-export me-2"></i>Export Logs
+        </button>
+        <button class="btn btn-danger" onclick="clearOldLogs()">
+            <i class="fas fa-trash me-2"></i>Clear Old Logs
+        </button>
+    </div>
+</div>
+
+<!-- Search and Filter -->
+<div class="log-search">
+    <div class="row g-3">
+        <div class="col-md-3">
+            <label class="form-label">Log Type</label>
+            <select class="form-select" id="logTypeFilter">
+                <option value="">All Types</option>
+                <option value="leave">Leave Actions</option>
+                <option value="verification">Verifications</option>
+                <option value="admin">Admin Actions</option>
+            </select>
+        </div>
+        <div class="col-md-3">
+            <label class="form-label">Date From</label>
+            <input type="date" class="form-control" id="dateFrom">
+        </div>
+        <div class="col-md-3">
+            <label class="form-label">Date To</label>
+            <input type="date" class="form-control" id="dateTo">
+        </div>
+        <div class="col-md-3 d-flex align-items-end">
+            <button class="btn btn-vit w-100" onclick="filterLogs()">
+                <i class="fas fa-search me-2"></i>Filter
+            </button>
+        </div>
+        <div class="col-12">
+            <div class="input-group">
+                <input type="text" class="form-control" id="logSearch" placeholder="Search in logs...">
+                <button class="btn btn-outline-secondary" type="button" onclick="searchLogs()">
+                    <i class="fas fa-search"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Logs Display -->
+<div class="card card-vit">
+    <div class="card-body p-0">
+        <div class="logs-container">
+            {% if logs %}
+                {% for log in logs %}
+                <div class="log-entry log-type-{{ 1 if log.log_type == 'leave' else 2 if log.log_type == 'verification' else 3 }}" 
+                     data-log-type="{{ log.log_type }}"
+                     data-timestamp="{{ log.timestamp.strftime('%Y-%m-%d') }}"
+                     data-content="{{ (log.details or '')|lower }}">
+                    <div class="d-flex align-items-start">
+                        <div class="log-icon" style="background: {{ '#007bff' if log.log_type == 'leave' else '#28a745' if log.log_type == 'verification' else '#6c757d' }}; color: white;">
+                            {% if log.log_type == 'leave' %}
+                                <i class="fas fa-calendar-alt"></i>
+                            {% elif log.log_type == 'verification' %}
+                                <i class="fas fa-qrcode"></i>
+                            {% else %}
+                                <i class="fas fa-user-shield"></i>
+                            {% endif %}
+                        </div>
+                        <div class="flex-grow-1">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div>
+                                    <h6 class="mb-1">
+                                        {{ log.action }}
+                                        {% if log.log_type == 'admin' and log.ip_address %}
+                                            <small class="text-muted ms-2">
+                                                <i class="fas fa-globe"></i> {{ log.ip_address }}
+                                            </small>
+                                        {% endif %}
+                                    </h6>
+                                    <p class="mb-1 small text-muted">
+                                        <i class="fas fa-user me-1"></i>
+                                        {{ log.user_id }}
+                                        <span class="mx-2">•</span>
+                                        <i class="fas fa-tag me-1"></i>
+                                        {{ log.log_type|title }}
+                                    </p>
+                                </div>
+                                <div class="text-end">
+                                    <span class="time-badge d-block mb-1">
+                                        {{ log.timestamp.strftime('%H:%M:%S') }}
+                                    </span>
+                                    <small class="text-muted">
+                                        {{ log.timestamp.strftime('%b %d, %Y') }}
+                                    </small>
+                                </div>
+                            </div>
+                            
+                            {% if log.details %}
+                            <div class="mt-2">
+                                <button class="btn btn-sm btn-outline-info" 
+                                        onclick="toggleLogDetails(this)">
+                                    <i class="fas fa-chevron-down me-1"></i>Show Details
+                                </button>
+                                <div class="log-details mt-2">
+                                    <div class="alert alert-light border">
+                                        <pre class="mb-0 small">{{ log.details }}</pre>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            {% else %}
+                <div class="text-center py-5">
+                    <i class="fas fa-inbox fa-4x text-muted mb-3"></i>
+                    <h5>No Logs Found</h5>
+                    <p class="text-muted">No system logs available.</p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Log Statistics -->
+<div class="row mt-4">
+    <div class="col-md-3">
+        <div class="card bg-primary text-white">
+            <div class="card-body text-center">
+                <h6 class="mb-2">Today's Logs</h6>
+                <h2 class="mb-0" id="todayLogs">0</h2>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-success text-white">
+            <div class="card-body text-center">
+                <h6 class="mb-2">Leave Actions</h6>
+                <h2 class="mb-0" id="leaveLogs">0</h2>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-warning text-white">
+            <div class="card-body text-center">
+                <h6 class="mb-2">Verifications</h6>
+                <h2 class="mb-0" id="verificationLogs">0</h2>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-danger text-white">
+            <div class="card-body text-center">
+                <h6 class="mb-2">Admin Actions</h6>
+                <h2 class="mb-0" id="adminLogs">0</h2>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    function toggleLogDetails(button) {
+        const detailsDiv = button.nextElementSibling;
+        const icon = button.querySelector('i');
+        
+        if (detailsDiv.classList.contains('show')) {
+            detailsDiv.classList.remove('show');
+            icon.classList.remove('fa-chevron-up');
+            icon.classList.add('fa-chevron-down');
+            button.innerHTML = '<i class="fas fa-chevron-down me-1"></i>Show Details';
+        } else {
+            detailsDiv.classList.add('show');
+            icon.classList.remove('fa-chevron-down');
+            icon.classList.add('fa-chevron-up');
+            button.innerHTML = '<i class="fas fa-chevron-up me-1"></i>Hide Details';
+        }
+    }
+    
+    function filterLogs() {
+        const typeFilter = document.getElementById('logTypeFilter').value;
+        const dateFrom = document.getElementById('dateFrom').value;
+        const dateTo = document.getElementById('dateTo').value;
+        
+        const logEntries = document.querySelectorAll('.log-entry');
+        logEntries.forEach(entry => {
+            let show = true;
+            
+            // Filter by type
+            if (typeFilter && entry.dataset.logType !== typeFilter) {
+                show = false;
+            }
+            
+            // Filter by date
+            if (dateFrom && entry.dataset.timestamp < dateFrom) {
+                show = false;
+            }
+            if (dateTo && entry.dataset.timestamp > dateTo) {
+                show = false;
+            }
+            
+            entry.style.display = show ? 'block' : 'none';
+        });
+    }
+    
+    function searchLogs() {
+        const searchTerm = document.getElementById('logSearch').value.toLowerCase();
+        const logEntries = document.querySelectorAll('.log-entry');
+        
+        logEntries.forEach(entry => {
+            if (entry.dataset.content.includes(searchTerm) || searchTerm === '') {
+                entry.style.display = 'block';
+            } else {
+                entry.style.display = 'none';
+            }
+        });
+    }
+    
+    function exportLogs() {
+    // Get all visible log entries
+    const logEntries = document.querySelectorAll('.log-entry:not([style*="display: none"])');
+    
+    if (logEntries.length === 0) {
+        alert('No logs to export!');
+        return;
+    }
+    
+    // Prepare CSV headers
+    let csvContent = "Timestamp,Log Type,User,Action,Details,IP Address\n";
+    
+    // Extract data from each log entry
+    logEntries.forEach(entry => {
+        const timestamp = entry.querySelector('.time-badge')?.textContent.trim() + ' ' +
+                         entry.querySelector('.text-muted small')?.textContent.trim();
+        
+        const logType = entry.dataset.logType || 'unknown';
+        const logTypeText = logType.charAt(0).toUpperCase() + logType.slice(1);
+        
+        // Extract user ID (from the <p> element after <i class="fas fa-user">)
+        const userElement = entry.querySelector('p.small.text-muted');
+        let userId = 'Unknown';
+        if (userElement) {
+            const userText = userElement.textContent;
+            const userMatch = userText.match(/fa-user[^•]*•\s*([^•]+)/);
+            userId = userMatch ? userMatch[1].trim() : 'Unknown';
+        }
+        
+        // Extract action
+        const action = entry.querySelector('h6')?.textContent.trim() || 'Unknown';
+        
+        // Extract details
+        let details = '';
+        const detailsElement = entry.querySelector('pre');
+        if (detailsElement) {
+            details = detailsElement.textContent.trim();
+        } else {
+            // Fallback to data-content attribute
+            details = entry.dataset.content || '';
+        }
+        
+        // Clean details for CSV (remove newlines and quotes)
+        details = details.replace(/"/g, '""').replace(/\n/g, ' ');
+        
+        // Extract IP address if available
+        let ipAddress = '';
+        const ipElement = entry.querySelector('small.text-muted i.fa-globe');
+        if (ipElement && ipElement.nextSibling) {
+            ipAddress = ipElement.nextSibling.textContent.trim();
+        }
+        
+        // Build CSV row (wrap in quotes to handle commas in content)
+        csvContent += `"${timestamp}","${logTypeText}","${userId}","${action}","${details}","${ipAddress}"\n`;
+    });
+    
+    // Add summary statistics
+    csvContent += "\nSUMMARY STATISTICS\n";
+    csvContent += `Total Logs,${logEntries.length}\n`;
+    csvContent += `Today's Logs,${document.getElementById('todayLogs').textContent}\n`;
+    csvContent += `Leave Actions,${document.getElementById('leaveLogs').textContent}\n`;
+    csvContent += `Verifications,${document.getElementById('verificationLogs').textContent}\n`;
+    csvContent += `Admin Actions,${document.getElementById('adminLogs').textContent}\n`;
+    csvContent += `Exported,${new Date().toLocaleString()}\n`;
+    csvContent += `Generated By,${document.querySelector('.navbar .nav-link strong')?.textContent || 'Admin'}\n`;
+    
+    // Create download link
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    
+    // Generate filename with current date
+    const now = new Date();
+    const dateStr = now.toISOString().split('T')[0];
+    const timeStr = now.toTimeString().split(' ')[0].replace(/:/g, '-');
+    const filename = `admin-logs-export-${dateStr}_${timeStr}.csv`;
+    
+    link.setAttribute('href', url);
+    link.setAttribute('download', filename);
+    link.style.display = 'none';
+    
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    // Show success message
+    const Toast = Swal.mixin({
+        toast: true,
+        position: 'top-end',
+        showConfirmButton: false,
+        timer: 3000,
+        timerProgressBar: true,
+        didOpen: (toast) => {
+            toast.addEventListener('mouseenter', Swal.stopTimer)
+            toast.addEventListener('mouseleave', Swal.resumeTimer)
+        }
+    });
+    
+    Toast.fire({
+        icon: 'success',
+        title: `Exported ${logEntries.length} logs to ${filename}`
+    });
+    
+    // Log the export action (you can send this to your backend if needed)
+    console.log(`Exported ${logEntries.length} logs as CSV`);
+    
+    
+    fetch('/admin/log-export', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            export_count: logEntries.length,
+            filename: filename,
+            timestamp: new Date().toISOString()
+        })
+    });
+
+    alert(`Successfully exported ${logEntries.length} logs to ${filename}`);
+    
+}
+    
+    function clearOldLogs() {
+        if (confirm('Are you sure you want to clear logs older than 30 days? This action cannot be undone.')) {
+            alert('Clearing old logs...');
+            // In production, this would make an API call
+        }
+    }
+    
+    // Calculate log statistics
+    document.addEventListener('DOMContentLoaded', function() {
+        const today = new Date().toISOString().split('T')[0];
+        let leaveCount = 0, verificationCount = 0, adminCount = 0, todayCount = 0;
+        
+        document.querySelectorAll('.log-entry').forEach(entry => {
+            const type = entry.dataset.logType;
+            const date = entry.dataset.timestamp;
+            
+            if (type === 'leave') leaveCount++;
+            if (type === 'verification') verificationCount++;
+            if (type === 'admin') adminCount++;
+            if (date === today) todayCount++;
+        });
+        
+        document.getElementById('todayLogs').textContent = todayCount;
+        document.getElementById('leaveLogs').textContent = leaveCount;
+        document.getElementById('verificationLogs').textContent = verificationCount;
+        document.getElementById('adminLogs').textContent = adminCount;
+    });
+    
+    // Auto-refresh every 60 seconds
+    setTimeout(() => {
+        window.location.reload();
+    }, 60000);
+</script>
+{% endblock %}

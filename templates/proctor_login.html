@@ -1,0 +1,121 @@
+{% extends "base.html" %}
+
+{% block title %}Proctor Login - VIT LMS{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <div class="card card-vit login-card">
+            <div class="card-header-vit text-center">
+                <h3 class="card-title mb-0">
+                    <i class="fas fa-chalkboard-teacher me-2"></i>
+                    Proctor Login
+                </h3>
+                <p class="mb-0 mt-2" style="font-size: 0.9rem;">Faculty portal for student leave management</p>
+            </div>
+            <div class="card-body">
+                {% if error %}
+                    <div class="alert alert-danger alert-vit">
+                        <i class="fas fa-exclamation-circle me-2"></i>{{ error }}
+                    </div>
+                {% endif %}
+                
+                <form method="POST" action="{{ url_for('proctor_login') }}">
+                    <div class="mb-4">
+                        <label for="employee_id" class="form-label required">Employee ID</label>
+                        <div class="input-group">
+                            <span class="input-group-text">
+                                <i class="fas fa-id-badge"></i>
+                            </span>
+                            <input type="text" class="form-control" id="employee_id" name="employee_id" 
+                                   placeholder="Enter your VIT Employee ID" required
+                                   pattern="[A-Z0-9]+" 
+                                   title="Enter your VIT employee ID">
+                        </div>
+                        <div class="form-text">Format: EMP12345 or similar</div>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label for="password" class="form-label required">Password</label>
+                        <div class="input-group">
+                            <span class="input-group-text">
+                                <i class="fas fa-lock"></i>
+                            </span>
+                            <input type="password" class="form-control" id="password" name="password" 
+                                   placeholder="Enter your password" required>
+                            <button class="btn btn-outline-secondary" type="button" id="togglePassword">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3 form-check">
+                        <input type="checkbox" class="form-check-input" id="remember" name="remember">
+                        <label class="form-check-label" for="remember">Remember me</label>
+                    </div>
+                    
+                    <div class="d-grid gap-2 mb-4">
+                        <button type="submit" class="btn btn-vit">
+                            <i class="fas fa-sign-in-alt me-2"></i>Login as Proctor
+                        </button>
+                    </div>
+                    
+                    <div class="text-center">
+                        <p class="text-muted small">
+                            <i class="fas fa-shield-alt me-1"></i>
+                            Secure access to proctor dashboard
+                        </p>
+                        <a href="{{ url_for('index') }}" class="btn btn-outline-secondary btn-sm">
+                            <i class="fas fa-home me-1"></i>Back to Home
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+        
+        <div class="card card-vit mt-4">
+            <div class="card-body">
+                <h5 class="card-title">
+                    <i class="fas fa-user-tie me-2"></i>Proctor Responsibilities
+                </h5>
+                <ul class="list-unstyled">
+                    <li class="mb-2">
+                        <i class="fas fa-check-circle text-primary me-2"></i>
+                        Review and approve student leave requests
+                    </li>
+                    <li class="mb-2">
+                        <i class="fas fa-check-circle text-success me-2"></i>
+                        Monitor student leave patterns
+                    </li>
+                    <li class="mb-2">
+                        <i class="fas fa-check-circle text-warning me-2"></i>
+                        Contact parents for emergency leaves
+                    </li>
+                    <li>
+                        <i class="fas fa-check-circle text-info me-2"></i>
+                        Generate QR codes for approved leaves
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Toggle password visibility
+    document.getElementById('togglePassword').addEventListener('click', function() {
+        const passwordInput = document.getElementById('password');
+        const icon = this.querySelector('i');
+        
+        if (passwordInput.type === 'password') {
+            passwordInput.type = 'text';
+            icon.classList.remove('fa-eye');
+            icon.classList.add('fa-eye-slash');
+        } else {
+            passwordInput.type = 'password';
+            icon.classList.remove('fa-eye-slash');
+            icon.classList.add('fa-eye');
+        }
+    });
+</script>
+{% endblock %}

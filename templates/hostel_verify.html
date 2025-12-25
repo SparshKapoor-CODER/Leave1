@@ -1,0 +1,889 @@
+{% extends "base.html" %}
+
+{% block title %}Hostel Verification - VIT LMS{% endblock %}
+
+{% block extra_css %}
+<style>
+    .verification-container {
+        max-width: 900px;
+        margin: 0 auto;
+    }
+    
+    .scanner-section {
+        background: white;
+        border-radius: 15px;
+        padding: 25px;
+        box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+        margin-bottom: 25px;
+    }
+    
+    /* Camera Scanner Styles */
+    .camera-container {
+        position: relative;
+        width: 100%;
+        max-width: 500px;
+        margin: 0 auto;
+    }
+    
+    #video {
+        width: 100%;
+        height: 400px;
+        border-radius: 10px;
+        background: #000;
+        object-fit: cover;
+    }
+    
+    .scanner-overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    .scan-box {
+        width: 300px;
+        height: 300px;
+        border: 3px solid #28a745;
+        border-radius: 10px;
+        position: relative;
+    }
+    
+    .scan-box::before, .scan-box::after {
+        content: '';
+        position: absolute;
+        width: 30px;
+        height: 30px;
+        border: 3px solid #28a745;
+    }
+    
+    .scan-box::before {
+        top: -3px;
+        left: -3px;
+        border-right: none;
+        border-bottom: none;
+    }
+    
+    .scan-box::after {
+        bottom: -3px;
+        right: -3px;
+        border-left: none;
+        border-top: none;
+    }
+    
+    .scan-laser {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 3px;
+        background: #28a745;
+        animation: scan 2s infinite linear;
+        box-shadow: 0 0 10px #28a745;
+    }
+    
+    @keyframes scan {
+        0% { top: 0; }
+        50% { top: 97%; }
+        100% { top: 0; }
+    }
+    
+    .camera-controls {
+        display: flex;
+        justify-content: center;
+        gap: 10px;
+        margin-top: 20px;
+    }
+    
+    .camera-btn {
+        padding: 10px 20px;
+        border-radius: 5px;
+        border: none;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-weight: 600;
+    }
+    
+    .qr-input-section {
+        max-width: 600px;
+        margin: 0 auto;
+        padding: 20px;
+        background: #f8f9fa;
+        border-radius: 10px;
+    }
+    
+    .demo-section {
+        background: #fff3cd;
+        border: 2px solid #ffc107;
+        border-radius: 10px;
+        padding: 20px;
+        margin: 20px 0;
+    }
+    
+    .demo-qr-box {
+        text-align: center;
+        padding: 15px;
+        background: white;
+        border-radius: 10px;
+        margin: 15px 0;
+    }
+    
+    .demo-qr-box img {
+        width: 200px;
+        height: 200px;
+        margin: 10px 0;
+    }
+    
+    /* Debug styles */
+    .debug-info {
+        background: #f8f9fa;
+        border-left: 4px solid #dc3545;
+        padding: 15px;
+        margin: 20px 0;
+        font-family: monospace;
+        font-size: 12px;
+        display: none;
+    }
+    
+    /* Permission slip container */
+    .slip-container {
+        margin-top: 30px;
+    }
+    
+    /* Action buttons */
+    .action-buttons {
+        display: flex;
+        justify-content: center;
+        gap: 15px;
+        margin-top: 25px;
+        flex-wrap: wrap;
+    }
+    
+    /* Mobile responsive adjustments */
+    @media (max-width: 768px) {
+        .camera-container {
+            max-width: 100%;
+        }
+        
+        #video {
+            height: 300px;
+        }
+        
+        .scan-box {
+            width: 250px;
+            height: 250px;
+        }
+        
+        .action-buttons {
+            flex-direction: column;
+            align-items: center;
+        }
+        
+        .action-buttons .btn {
+            width: 100%;
+            max-width: 300px;
+            margin-bottom: 10px;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="verification-container">
+    <!-- Header Section -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="h3 mb-0" style="color: var(--vit-blue);">
+                <i class="fas fa-qrcode me-2"></i>Hostel Verification System
+            </h1>
+            <p class="text-muted mb-0">
+                Welcome, {{ supervisor_name }} | Block: {{ hostel_block }}
+            </p>
+        </div>
+        <div class="d-flex gap-2">
+            <a href="{{ url_for('hostel_verify') }}" class="btn btn-outline-primary">
+                <i class="fas fa-redo me-2"></i>Reset
+            </a>
+            <a href="{{ url_for('logout', role='hostel') }}" class="btn btn-outline-danger">
+                <i class="fas fa-sign-out-alt me-2"></i>Logout
+            </a>
+        </div>
+    </div>
+
+    <!-- Debug Info (visible only during development) -->
+    {% if config.DEBUG %}
+    <div class="debug-info" id="debugInfo">
+        <h6>Debug Information:</h6>
+        <p>Slip data: {{ slip|tojson if slip else 'No slip data' }}</p>
+        <p>Error: {{ error if error else 'No error' }}</p>
+        <p>Success: {{ success if success else 'No success message' }}</p>
+    </div>
+    {% endif %}
+
+    {% if not slip %}
+    <!-- Scanner Section (Only show when no slip is displayed) -->
+    <div class="scanner-section">
+        <h4 class="text-center mb-4">
+            <i class="fas fa-camera me-2"></i>QR Code Scanner
+        </h4>
+        
+        <div class="alert alert-info">
+            <i class="fas fa-info-circle me-2"></i>
+            <strong>How to use:</strong> Allow camera access, point camera at student's QR code, it will scan automatically.
+        </div>
+        
+        <!-- Camera Scanner -->
+        <div class="camera-container">
+            <video id="video" playsinline autoplay></video>
+            <div class="scanner-overlay">
+                <div class="scan-box">
+                    <div class="scan-laser"></div>
+                </div>
+            </div>
+        </div>
+        
+        <div id="camera-status" class="alert alert-secondary mt-3">
+            <i class="fas fa-camera me-2"></i>
+            <span id="status-text">Click "Start Camera" to begin scanning</span>
+        </div>
+        
+        <div class="camera-controls">
+            <button id="start-btn" class="camera-btn btn-vit" onclick="startCamera()">
+                <i class="fas fa-play me-2"></i>Start Camera
+            </button>
+            <button id="stop-btn" class="camera-btn btn-danger" onclick="stopCamera()" disabled>
+                <i class="fas fa-stop me-2"></i>Stop Camera
+            </button>
+            <button id="switch-btn" class="camera-btn btn-info" onclick="switchCamera()" disabled>
+                <i class="fas fa-sync-alt me-2"></i>Switch Camera
+            </button>
+        </div>
+        
+        <!-- Manual Entry as Backup -->
+        <hr class="my-4">
+        
+        <div class="qr-input-section">
+            <h5 class="text-center mb-3">
+                <i class="fas fa-keyboard me-2"></i>Manual Entry (Backup)
+            </h5>
+            <form method="POST" action="{{ url_for('hostel_verify') }}" id="manualForm">
+                <div class="input-group mb-3">
+                    <input type="text" class="form-control" name="qr_token" 
+                           placeholder="Enter 32-character QR code manually" 
+                           id="qrInput"
+                           pattern="[A-Za-z0-9]{32}" 
+                           title="32 character alphanumeric QR code token"
+                           required
+                           style="font-family: monospace; font-size: 16px;">
+                    <button class="btn btn-vit" type="submit">
+                        <i class="fas fa-check me-2"></i>Verify Manually
+                    </button>
+                </div>
+                <div class="form-text text-center">
+                    Use this if camera doesn't work. Scan QR with phone app and paste code here.
+                </div>
+            </form>
+        </div>
+        
+        <!-- Demo QR for Testing -->
+        <div class="demo-section">
+            <h5 class="text-center mb-3">
+                <i class="fas fa-vial me-2"></i>Test QR Code for Camera
+            </h5>
+            <p class="text-center text-muted">
+                Scan this QR code with your camera to test:
+            </p>
+            
+            <div class="demo-qr-box">
+                <img src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=VIT-LEAVE%3ATESTQR1234567890ABCDEFGHIJKLMN&format=png&margin=0&color=000&bgcolor=FFF" 
+                     alt="Test QR Code" 
+                     id="testQrImage">
+                <p class="mt-2 mb-1"><strong>Test QR Code Content:</strong></p>
+                <div class="input-group input-group-sm">
+                    <input type="text" class="form-control" 
+                           value="TESTQR1234567890ABCDEFGHIJKLMN" 
+                           id="testQrCode" readonly
+                           style="font-family: monospace; font-size: 12px;">
+                    <button class="btn btn-outline-primary btn-sm" type="button" 
+                            onclick="copyTestCode()">
+                        <i class="fas fa-copy"></i>
+                    </button>
+                </div>
+                <button class="btn btn-success btn-sm mt-2" onclick="useTestCode()">
+                    <i class="fas fa-magic me-1"></i>Use This Code for Testing
+                </button>
+            </div>
+        </div>
+        
+        <div class="alert alert-warning mt-4">
+            <i class="fas fa-exclamation-triangle me-2"></i>
+            <strong>Important:</strong> Always verify student ID card along with QR code.
+            QR codes expire 24 hours after approval.
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Status Messages -->
+    {% if error %}
+    <div class="alert alert-danger alert-vit">
+        <i class="fas fa-exclamation-circle me-2"></i>{{ error }}
+    </div>
+    {% endif %}
+
+    {% if success %}
+    <div class="alert alert-success alert-vit">
+        <i class="fas fa-check-circle me-2"></i>{{ success }}
+    </div>
+    {% endif %}
+
+    <!-- Permission Slip Section -->
+    {% if slip %}
+    <div class="slip-container">
+        <!-- Generate serial number -->
+        {% set clean_verified_at = slip.verified_at|replace('-', '')|replace(':', '')|replace(' ', '') %}
+        {% set serial_id = slip.reg_number ~ '-' ~ (clean_verified_at[:12] if clean_verified_at|length >= 12 else clean_verified_at) %}
+        
+        <!-- Include the permission slip template -->
+        {% include 'permission_slip.html' %}
+        
+        <!-- Action Buttons -->
+        <div class="action-buttons">
+            <button class="btn btn-vit" onclick="printSlip()">
+                <i class="fas fa-print me-2"></i>Print Permission Slip
+            </button>
+            <button class="btn btn-success" onclick="verifyAnother()">
+                <i class="fas fa-redo me-2"></i>Verify Another QR Code
+            </button>
+            <button class="btn btn-info" onclick="downloadSlip()">
+                <i class="fas fa-download me-2"></i>Save as PDF
+            </button>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Include jsQR Library -->
+<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
+
+<script>
+    // Camera scanning variables
+    let videoStream = null;
+    let isScanning = false;
+    let currentCamera = 'environment'; // 'environment' for back, 'user' for front
+    let scanInterval = null;
+    let canvas = null;
+    let context = null;
+    
+    // Debug mode - check from config or URL parameter
+    const DEBUG_MODE = {% if config.DEBUG %}true{% else %}false{% endif %};
+    
+    // Initialize when page loads
+    document.addEventListener('DOMContentLoaded', function() {
+        // Show debug info if in debug mode
+        if (DEBUG_MODE) {
+            document.getElementById('debugInfo').style.display = 'block';
+        }
+        
+        // Create canvas for QR scanning
+        canvas = document.createElement('canvas');
+        context = canvas.getContext('2d');
+        
+        // Clear any old verification data
+        sessionStorage.removeItem('verification_complete');
+        
+        // Check for camera permission (only if scanner section exists)
+        const scannerSection = document.querySelector('.scanner-section');
+        if (scannerSection) {
+            checkCameraPermission();
+            
+            // Auto-focus QR input
+            document.getElementById('qrInput').focus();
+        }
+        
+        // Show success message if slip is displayed
+        if (document.getElementById('permissionSlip')) {
+            showAlert('Permission slip generated successfully!', 'success');
+        }
+    });
+    
+    // Check camera permission
+    async function checkCameraPermission() {
+        try {
+            const devices = await navigator.mediaDevices.enumerateDevices();
+            const videoDevices = devices.filter(device => device.kind === 'videoinput');
+            
+            if (videoDevices.length === 0) {
+                updateStatus('No camera found. Please use manual entry.', 'warning');
+                return false;
+            }
+            
+            updateStatus('Camera available. Click "Start Camera" to begin.', 'info');
+            return true;
+        } catch (error) {
+            console.error('Camera permission check failed:', error);
+            updateStatus('Camera access not available. Please use manual entry.', 'warning');
+            return false;
+        }
+    }
+    
+    // Start camera
+    async function startCamera() {
+        if (isScanning) return;
+        
+        try {
+            // Stop any existing stream
+            if (videoStream) {
+                videoStream.getTracks().forEach(track => track.stop());
+            }
+            
+            // Get video element
+            const video = document.getElementById('video');
+            
+            // Request camera access
+            videoStream = await navigator.mediaDevices.getUserMedia({
+                video: {
+                    facingMode: currentCamera,
+                    width: { ideal: 1280 },
+                    height: { ideal: 720 }
+                }
+            });
+            
+            // Set video source
+            video.srcObject = videoStream;
+            video.play();
+            
+            // Update status and buttons
+            isScanning = true;
+            updateStatus('Camera started. Point at QR code...', 'success');
+            updateButtons(true);
+            
+            // Start scanning loop
+            startScanning();
+            
+        } catch (error) {
+            console.error('Camera error:', error);
+            
+            if (error.name === 'NotAllowedError') {
+                updateStatus('Camera access denied. Please allow camera access.', 'danger');
+            } else if (error.name === 'NotFoundError') {
+                updateStatus('No camera found. Please use manual entry.', 'warning');
+            } else if (error.name === 'NotReadableError') {
+                updateStatus('Camera is busy. Please close other apps using camera.', 'danger');
+            } else {
+                updateStatus('Camera error: ' + error.message, 'danger');
+            }
+        }
+    }
+    
+    // Stop camera
+    function stopCamera() {
+        if (!isScanning) return;
+        
+        // Stop scanning loop
+        if (scanInterval) {
+            clearInterval(scanInterval);
+            scanInterval = null;
+        }
+        
+        // Stop video stream
+        if (videoStream) {
+            videoStream.getTracks().forEach(track => track.stop());
+            videoStream = null;
+            
+            const video = document.getElementById('video');
+            video.srcObject = null;
+        }
+        
+        // Update status
+        isScanning = false;
+        updateStatus('Camera stopped', 'secondary');
+        updateButtons(false);
+    }
+    
+    // Switch camera (front/back)
+    async function switchCamera() {
+        if (!isScanning) return;
+        
+        // Stop current camera
+        stopCamera();
+        
+        // Switch camera mode
+        currentCamera = currentCamera === 'environment' ? 'user' : 'environment';
+        
+        // Restart camera with new mode
+        setTimeout(startCamera, 500);
+    }
+    
+    // Start scanning loop
+    function startScanning() {
+        if (!isScanning) return;
+        
+        scanInterval = setInterval(scanQRCode, 100); // Scan 10 times per second
+    }
+    
+    // Scan for QR codes
+    function scanQRCode() {
+        const video = document.getElementById('video');
+        
+        if (!video || video.readyState !== 4) return;
+        
+        // Set canvas dimensions to video dimensions
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        
+        // Draw video frame to canvas
+        context.drawImage(video, 0, 0, canvas.width, canvas.height);
+        
+        // Get image data
+        const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
+        
+        // Scan for QR code
+        const code = jsQR(imageData.data, imageData.width, imageData.height, {
+            inversionAttempts: 'dontInvert'
+        });
+        
+        // If QR code found
+        if (code) {
+            console.log('QR Code found:', code.data);
+            
+            // Check if it's a VIT QR code
+            if (code.data.startsWith('VIT-LEAVE:')) {
+                const qrToken = code.data.split(':')[1];
+                
+                // Highlight success
+                flashScanBox();
+                
+                // Stop camera
+                stopCamera();
+                
+                // Verify QR code
+                verifyQRToken(qrToken);
+            }
+        }
+    }
+    
+    // Flash scan box green to indicate success
+    function flashScanBox() {
+        const scanBox = document.querySelector('.scan-box');
+        const originalColor = '#28a745';
+        
+        // Flash green 3 times
+        let flashCount = 0;
+        const flashInterval = setInterval(() => {
+            scanBox.style.borderColor = flashCount % 2 === 0 ? '#00ff00' : originalColor;
+            flashCount++;
+            
+            if (flashCount >= 6) { // 3 flashes
+                clearInterval(flashInterval);
+                scanBox.style.borderColor = originalColor;
+            }
+        }, 200);
+    }
+    
+    // Verify QR token with server
+    async function verifyQRToken(qrToken) {
+        updateStatus('Verifying QR code...', 'info');
+        
+        try {
+            // Create form data
+            const formData = new FormData();
+            formData.append('qr_token', qrToken);
+            
+            // Send POST request
+            const response = await fetch('{{ url_for("hostel_verify") }}', {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            });
+            
+            // Check response type
+            const contentType = response.headers.get('content-type');
+            
+            if (contentType && contentType.includes('application/json')) {
+                // JSON response (AJAX request)
+                const data = await response.json();
+                
+                if (data.success) {
+                    updateStatus('QR code verified! Loading permission slip...', 'success');
+                    
+                    // Store verification flag in sessionStorage
+                    sessionStorage.setItem('verification_complete', 'true');
+                    
+                    // Reload page to show permission slip
+                    setTimeout(() => {
+                        location.reload();
+                    }, 1000);
+                } else {
+                    updateStatus('Verification failed: ' + (data.message || 'Unknown error'), 'danger');
+                    // Restart camera after error
+                    setTimeout(startCamera, 2000);
+                }
+            } else {
+                // HTML response (regular form submission)
+                updateStatus('QR code verified! Redirecting...', 'success');
+                
+                // For regular form, we need to submit the form
+                document.getElementById('qrInput').value = qrToken;
+                document.getElementById('manualForm').submit();
+            }
+        } catch (error) {
+            console.error('Verification error:', error);
+            updateStatus('Network error. Please try again.', 'danger');
+            // Restart camera after error
+            setTimeout(startCamera, 2000);
+        }
+    }
+    
+    // Update status message
+    function updateStatus(message, type = 'info') {
+        const statusDiv = document.getElementById('camera-status');
+        const statusText = document.getElementById('status-text');
+        
+        if (statusDiv && statusText) {
+            statusDiv.className = `alert alert-${type} mt-3`;
+            statusText.textContent = message;
+        }
+    }
+    
+    // Update button states
+    function updateButtons(scanning) {
+        const startBtn = document.getElementById('start-btn');
+        const stopBtn = document.getElementById('stop-btn');
+        const switchBtn = document.getElementById('switch-btn');
+        
+        if (scanning) {
+            startBtn.disabled = true;
+            stopBtn.disabled = false;
+            switchBtn.disabled = false;
+            startBtn.classList.remove('btn-vit');
+            startBtn.classList.add('btn-secondary');
+        } else {
+            startBtn.disabled = false;
+            stopBtn.disabled = true;
+            switchBtn.disabled = true;
+            startBtn.classList.remove('btn-secondary');
+            startBtn.classList.add('btn-vit');
+        }
+    }
+    
+    // Copy test code
+    function copyTestCode() {
+        const testCode = 'TESTQR1234567890ABCDEFGHIJKLMN';
+        navigator.clipboard.writeText(testCode).then(() => {
+            showAlert('Test code copied to clipboard!', 'success');
+        }).catch(() => {
+            const input = document.getElementById('testQrCode');
+            input.select();
+            document.execCommand('copy');
+            showAlert('Code copied!', 'success');
+        });
+    }
+    
+    // Use test code
+    function useTestCode() {
+        const input = document.getElementById('qrInput');
+        input.value = 'TESTQR1234567890ABCDEFGHIJKLMN';
+        input.focus();
+        showAlert('Test code loaded. Use manual verify to test.', 'info');
+    }
+    
+    // Show alert
+    function showAlert(message, type) {
+        const alertDiv = document.createElement('div');
+        alertDiv.className = `alert alert-${type} alert-dismissible fade show mt-3`;
+        alertDiv.innerHTML = `
+            <i class="fas fa-${type === 'success' ? 'check-circle' : 'info-circle'} me-2"></i>
+            ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        `;
+        
+        const scannerSection = document.querySelector('.scanner-section');
+        if (scannerSection) {
+            scannerSection.prepend(alertDiv);
+        } else {
+            document.querySelector('.verification-container').prepend(alertDiv);
+        }
+        
+        setTimeout(() => {
+            if (alertDiv.parentNode) {
+                alertDiv.remove();
+            }
+        }, 5000);
+    }
+    
+    // Print permission slip with EXACT same styles
+    function printSlip() {
+        // Get the permission slip container
+        const slipContainer = document.getElementById('permissionSlip');
+        if (!slipContainer) {
+            showAlert('Permission slip not found!', 'danger');
+            return;
+        }
+        
+        // Get all styles from the page that apply to the slip
+        const allStyles = Array.from(document.querySelectorAll('style'))
+            .map(style => style.innerHTML)
+            .join('\n');
+        
+        // Get the permission slip HTML with its inline styles
+        const slipHTML = slipContainer.outerHTML;
+        
+        // Create a print window
+        const printWindow = window.open('', '_blank', 'width=900,height=700');
+        
+        // Write the complete HTML with all styles
+        printWindow.document.write(`
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <title>VIT Leave Permission Slip - {{ slip.student_name }}</title>
+                <meta charset="UTF-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <style>
+                    /* Include all styles from the original page */
+                    ${allStyles}
+                    
+                    /* Print-specific styles */
+                    @media print {
+                        @page {
+                            margin: 20mm;
+                            size: A4;
+                        }
+                        body {
+                            margin: 0;
+                            padding: 0;
+                            background: white !important;
+                        }
+                        .permission-slip-container {
+                            margin: 0 !important;
+                            padding: 0 !important;
+                            box-shadow: none !important;
+                            background: white !important;
+                        }
+                        .permission-slip {
+                            width: 100% !important;
+                            max-width: 100% !important;
+                            border: 1px solid #000 !important;
+                            box-shadow: none !important;
+                        }
+                        .no-print, .action-buttons, .verification-container {
+                            display: none !important;
+                        }
+                        .slip-top-bar {
+                            height: 10px !important;
+                        }
+                    }
+                    
+                    /* General styles for print preview */
+                    body {
+                        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+                        background: #f0f2f5;
+                        display: flex;
+                        justify-content: center;
+                        align-items: center;
+                        min-height: 100vh;
+                        margin: 0;
+                        padding: 20px;
+                    }
+                </style>
+            </head>
+            <body>
+                ${slipHTML}
+                
+                <!-- Print instructions -->
+                <div class="no-print" style="text-align: center; margin-top: 30px; padding: 20px; border-top: 1px dashed #ccc; color: #666;">
+                    <p><strong>Print Instructions:</strong></p>
+                    <p>1. For best results, use "Save as PDF" to create a digital copy</p>
+                    <p>2. Ensure "Background graphics" is enabled in print settings</p>
+                    <p>3. Use A4 paper size for proper scaling</p>
+                    <button onclick="window.print()" style="background: #003366; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; margin: 10px;">
+                        <i class="fas fa-print"></i> Print Now
+                    </button>
+                    <button onclick="window.close()" style="background: #666; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; margin: 10px;">
+                        Close Window
+                    </button>
+                </div>
+                
+                <script>
+                    // Auto-print after a short delay
+                    setTimeout(() => {
+                        window.print();
+                    }, 500);
+                    
+                    // Close window after print (on most browsers)
+                    window.onafterprint = function() {
+                        setTimeout(() => {
+                            window.close();
+                        }, 1000);
+                    };
+                    
+                    // Add print button functionality
+                    document.addEventListener('DOMContentLoaded', function() {
+                        const printBtn = document.querySelector('[onclick="window.print()"]');
+                        if (printBtn) {
+                            printBtn.addEventListener('click', function() {
+                                window.print();
+                            });
+                        }
+                    });
+                <\/script>
+            </body>
+            </html>
+        `);
+        
+        printWindow.document.close();
+    }
+    
+    // Verify another QR code
+    function verifyAnother() {
+        // Clear session storage
+        sessionStorage.removeItem('verification_complete');
+        
+        // Submit a GET request to reset the page
+        window.location.href = '{{ url_for("hostel_verify") }}';
+    }
+    
+    // Download slip as PDF (uses print dialog)
+    function downloadSlip() {
+        // Use the print function but show instructions
+        printSlip();
+        showAlert('In the print dialog, select "Save as PDF" to download as PDF file.', 'info');
+    }
+    
+    // Handle paste event
+    document.getElementById('qrInput')?.addEventListener('paste', function(e) {
+        setTimeout(() => {
+            let value = this.value.trim().toUpperCase();
+            if (value.startsWith('VIT-LEAVE:')) {
+                value = value.split(':')[1];
+                this.value = value;
+            }
+        }, 10);
+    });
+    
+    // Handle form submission for manual entry
+    document.getElementById('manualForm')?.addEventListener('submit', function(e) {
+        const qrInput = document.getElementById('qrInput');
+        const qrValue = qrInput.value.trim().toUpperCase();
+        
+        if (!qrValue) {
+            e.preventDefault();
+            showAlert('Please enter a QR code', 'danger');
+            return;
+        }
+        
+        // Clean the QR code if it contains the VIT-LEAVE: prefix
+        if (qrValue.startsWith('VIT-LEAVE:')) {
+            const cleanValue = qrValue.split(':')[1];
+            qrInput.value = cleanValue;
+        }
+    });
+</script>
+{% endblock %}

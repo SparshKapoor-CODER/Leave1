@@ -1,0 +1,284 @@
+<style>
+    :root {
+        --primary-blue: #003366; /* Deep Academic Blue */
+        --accent-gold: #cfaa3d;  /* Subtle Gold/Bronze accent */
+        --success-green: #2ecc71;
+        --text-dark: #2c3e50;
+        --text-light: #7f8c8d;
+        --bg-offwhite: #f8f9fa;
+    }
+
+    .permission-slip-container {
+        display: flex;
+        justify-content: center;
+        padding: 40px 20px;
+        background-color: #f0f2f5;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    .permission-slip {
+        background: white;
+        width: 100%;
+        max-width: 800px;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+        border-radius: 12px;
+        overflow: hidden;
+        position: relative;
+        border: 1px solid rgba(0,0,0,0.05);
+    }
+
+    /* Top Decorative Bar */
+    .slip-top-bar {
+        height: 8px;
+        background: linear-gradient(90deg, var(--primary-blue) 0%, var(--primary-blue) 85%, var(--accent-gold) 85%);
+    }
+
+    .slip-header {
+        text-align: center;
+        padding: 30px 40px 20px;
+        border-bottom: 1px solid #eee;
+    }
+
+    .institute-name {
+        font-size: 1.5rem;
+        font-weight: 800;
+        color: var(--primary-blue);
+        letter-spacing: 0.5px;
+        margin: 0;
+        text-transform: uppercase;
+    }
+
+    .doc-title {
+        font-size: 1.1rem;
+        color: var(--text-dark);
+        margin-top: 5px;
+        font-weight: 600;
+        letter-spacing: 2px;
+        text-transform: uppercase;
+    }
+
+    .serial-badge {
+        display: inline-block;
+        background: var(--bg-offwhite);
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-size: 0.8rem;
+        color: var(--text-light);
+        margin-top: 10px;
+        border: 1px solid #e1e4e8;
+        font-family: 'Courier New', monospace;
+    }
+
+    /* Content Area */
+    .slip-body {
+        padding: 30px 40px;
+    }
+
+    .info-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 30px;
+        margin-bottom: 30px;
+    }
+
+    .info-group {
+        margin-bottom: 12px;
+    }
+
+    .label {
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        color: var(--text-light);
+        font-weight: 600;
+        display: block;
+        margin-bottom: 2px;
+    }
+
+    .value {
+        font-size: 1rem;
+        color: var(--text-dark);
+        font-weight: 500;
+        border-bottom: 1px dashed #ddd;
+        padding-bottom: 2px;
+        width: 100%;
+        display: block;
+    }
+
+    .destination-box {
+        background: var(--bg-offwhite);
+        border-left: 4px solid var(--primary-blue);
+        padding: 15px 20px;
+        margin: 20px 0;
+        border-radius: 0 8px 8px 0;
+    }
+
+    /* Instructions */
+    .instructions-container {
+        margin-top: 25px;
+        border: 1px solid #eee;
+        border-radius: 8px;
+        padding: 20px;
+    }
+
+    .instructions-title {
+        font-size: 0.8rem;
+        font-weight: 700;
+        color: var(--text-dark);
+        margin-bottom: 10px;
+        text-transform: uppercase;
+    }
+
+    .instructions-list {
+        margin: 0;
+        padding-left: 15px;
+        font-size: 0.85rem;
+        color: #555;
+        line-height: 1.5;
+    }
+    
+    .instructions-list li {
+        margin-bottom: 4px;
+    }
+
+    /* Footer */
+    .slip-footer {
+        background-color: #fcfcfc;
+        border-top: 1px solid #eee;
+        padding: 20px 40px;
+    }
+
+    .footer-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 20px;
+        align-items: end;
+    }
+
+    .verified-stamp {
+        border: 2px solid var(--success-green);
+        color: var(--success-green);
+        display: inline-block;
+        padding: 5px 15px;
+        text-transform: uppercase;
+        font-weight: bold;
+        border-radius: 4px;
+        transform: rotate(-2deg);
+        font-size: 0.9rem;
+        opacity: 0.8;
+        margin-top: 10px;
+    }
+
+    .generated-text {
+        text-align: center;
+        font-size: 0.75rem;
+        color: #999;
+        margin-top: 25px;
+        font-style: italic;
+    }
+
+    /* Print Optimizations */
+    @media print {
+        .permission-slip-container {
+            background: white;
+            padding: 0;
+        }
+        .permission-slip {
+            box-shadow: none;
+            border: 2px solid #000;
+            max-width: 100%;
+        }
+    }
+</style>
+
+<div class="permission-slip-container">
+    <div class="permission-slip" id="permissionSlip">
+        <div class="slip-top-bar"></div>
+        
+        <div class="slip-header">
+            <h2 class="institute-name">Vellore Institute of Technology</h2>
+            <h3 class="doc-title">Student Leave Permission Slip</h3>
+            <div class="serial-badge">REF: VIT-{{ serial_id }}</div>
+        </div>
+        
+        <div class="slip-body">
+            <div class="info-grid">
+                <div>
+                    <div style="margin-bottom: 15px; font-weight: bold; color: var(--primary-blue);">STUDENT PROFILE</div>
+                    <div class="info-group">
+                        <span class="label">Name</span>
+                        <span class="value">{{ slip.student_name }}</span>
+                    </div>
+                    <div class="info-group">
+                        <span class="label">Registration No</span>
+                        <span class="value">{{ slip.reg_number }}</span>
+                    </div>
+                    <div class="info-group">
+                        <span class="label">Hostel Details</span>
+                        <span class="value">{{ slip.hostel_block }} / Room {{ slip.room_number }}</span>
+                    </div>
+                </div>
+
+                <div>
+                    <div style="margin-bottom: 15px; font-weight: bold; color: var(--primary-blue);">LEAVE AUTHORIZATION</div>
+                    <div class="info-group">
+                        <span class="label">Departure</span>
+                        <span class="value">{{ slip.from_date }} &nbsp;|&nbsp; {{ slip.from_time }}</span>
+                    </div>
+                    <div class="info-group">
+                        <span class="label">Arrival</span>
+                        <span class="value">{{ slip.to_date }} &nbsp;|&nbsp; {{ slip.to_time }}</span>
+                    </div>
+                    <div class="info-group">
+                        <span class="label">Proctor</span>
+                        <span class="value">{{ slip.proctor_name }}</span>
+                    </div>
+                    <div class="verified-stamp">VERIFIED: {{ slip.verified_at }}</div>
+                </div>
+            </div>
+            
+            <div class="destination-box">
+                <span class="label" style="color: var(--primary-blue);">Authorized Destination</span>
+                <div style="font-size: 1.1rem; font-weight: 500;">{{ slip.destination }}</div>
+            </div>
+            
+            <div class="instructions-container">
+                <div class="instructions-title">Important Instructions</div>
+                <ol class="instructions-list">
+                    <li>This slip must be produced on demand by security or hostel authorities.</li>
+                    <li>Student must strictly adhere to the approved timings. Late arrival may result in disciplinary action.</li>
+                    <li>Biometric entry/exit is mandatory at the main gate.</li>
+                    <li>In case of emergency, contact the Hostel Office immediately.</li>
+                </ol>
+            </div>
+        </div>
+        
+        <div class="slip-footer">
+            <div class="footer-grid">
+                <div>
+                    <span class="label">Approved By</span>
+                    <div style="font-weight: bold; font-size: 1rem; margin-top: 5px;">{{ slip.supervisor_name }}</div>
+                    <div style="font-size: 0.85rem; color: #666;">Hostel Supervisor, Block {{ hostel_block }}</div>
+                </div>
+                
+                <div style="text-align: right;">
+                    <svg height="40" width="150">
+                        <rect x="0" y="0" width="4" height="40" fill="#333"></rect>
+                        <rect x="6" y="0" width="2" height="40" fill="#333"></rect>
+                        <rect x="12" y="0" width="6" height="40" fill="#333"></rect>
+                        <rect x="22" y="0" width="2" height="40" fill="#333"></rect>
+                        <rect x="28" y="0" width="4" height="40" fill="#333"></rect>
+                        <rect x="36" y="0" width="2" height="40" fill="#333"></rect>
+                        <rect x="42" y="0" width="8" height="40" fill="#333"></rect>
+                        <rect x="54" y="0" width="2" height="40" fill="#333"></rect>
+                        <rect x="60" y="0" width="4" height="40" fill="#333"></rect>
+                    </svg>
+                    <div style="font-size: 0.7rem; color: #333; letter-spacing: 3px; margin-right: 25px;">{{ serial_id }}</div>
+                </div>
+            </div>
+            
+            <div class="generated-text">
+                System Generated Outpass • No Physical Signature Required • Verify at vtop.vit.ac.in
+            </div>
+        </div>
+    </div>
+</div>

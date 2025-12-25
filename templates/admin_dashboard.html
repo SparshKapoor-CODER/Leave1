@@ -1,0 +1,877 @@
+{% extends "base.html" %}
+
+{% block title %}Admin Dashboard - VIT LMS{% endblock %}
+
+{% block extra_css %}
+<style>
+    .admin-stats {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 15px;
+        margin-bottom: 30px;
+    }
+    
+    .stat-card {
+        background: white;
+        padding: 20px;
+        border-radius: 10px;
+        text-align: center;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+        border-top: 5px solid;
+        transition: transform 0.3s ease;
+    }
+    
+    .stat-card:hover {
+        transform: translateY(-5px);
+    }
+    
+    .stat-card-1 { border-top-color: #007bff; }
+    .stat-card-2 { border-top-color: #28a745; }
+    .stat-card-3 { border-top-color: #ffc107; }
+    .stat-card-4 { border-top-color: #dc3545; }
+    .stat-card-5 { border-top-color: #6f42c1; }
+    .stat-card-6 { border-top-color: #17a2b8; }
+    
+    .stat-number {
+        font-size: 2.2rem;
+        font-weight: bold;
+        margin: 10px 0;
+    }
+    
+    .suspicious-badge {
+        position: absolute;
+        top: -10px;
+        right: -10px;
+        background: #dc3545;
+        color: white;
+        border-radius: 50%;
+        width: 25px;
+        height: 25px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 12px;
+        font-weight: bold;
+    }
+    
+    .admin-nav {
+        background: #343a40;
+        border-radius: 10px;
+        padding: 15px;
+        margin-bottom: 25px;
+    }
+    
+
+    .admin-nav .nav-link {
+        color: #adb5bd;
+        font-weight: 500;
+        padding: 10px 15px;
+        border-radius: 5px;
+        transition: all 0.3s;
+    }
+    
+    .admin-nav .nav-link:hover,
+    .admin-nav .nav-link.active {
+        color: white;
+        background: rgba(255,255,255,0.1);
+    }
+    
+    .log-item {
+        border-left: 4px solid;
+        padding-left: 15px;
+        margin-bottom: 15px;
+        padding: 10px 15px;
+        background: #f8f9fa;
+        border-radius: 5px;
+    }
+    
+    .log-leave { border-left-color: #007bff; }
+    .log-verification { border-left-color: #28a745; }
+    .log-admin { border-left-color: #6c757d; }
+    
+    .quick-actions .btn {
+        margin: 5px;
+        min-width: 180px;
+    }
+
+    .notification {
+    animation: slideIn 0.3s ease;
+    margin-bottom: 10px;
+}
+
+.system-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    margin-left: 15px;
+    padding: 5px 10px;
+    background: rgba(255,255,255,0.1);
+    border-radius: 4px;
+}
+
+.stat-number.updated {
+    animation: pulse 1s;
+}
+
+@keyframes slideIn {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+@keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.1); }
+    100% { transform: scale(1); }
+}
+
+.form-check-input:checked {
+    background-color: #dc3545;
+    border-color: #dc3545;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h1 class="h3 mb-0" style="color: #dc3545;">
+            <i class="fas fa-user-shield me-2"></i>Admin Dashboard
+        </h1>
+        <p class="text-muted mb-0">
+            Welcome, {{ admin_name }} | Role: {{ admin_role|upper }}
+        </p>
+    </div>
+    <div class="d-flex gap-2">
+        <button class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#quickActionsModal">
+            <i class="fas fa-bolt me-2"></i>Quick Actions
+        </button>
+        <a href="{{ url_for('admin_logout') }}" class="btn btn-outline-danger">
+            <i class="fas fa-sign-out-alt me-2"></i>Logout
+        </a>
+    </div>
+</div>
+
+<!-- Admin Navigation -->
+<div class="admin-nav">
+    <div class="d-flex flex-wrap gap-2">
+        <a href="{{ url_for('admin_dashboard') }}" class="nav-link active">
+            <i class="fas fa-tachometer-alt me-2"></i>Dashboard
+        </a>
+        <a href="{{ url_for('admin_leaves') }}" class="nav-link">
+            <i class="fas fa-calendar-alt me-2"></i>All Leaves
+        </a>
+        <a href="{{ url_for('admin_logs') }}" class="nav-link">
+            <i class="fas fa-history me-2"></i>System Logs
+        </a>
+        <a href="{{ url_for('admin_users') }}" class="nav-link">
+            <i class="fas fa-users me-2"></i>User Management
+        </a>
+        <a href="#reports" class="nav-link">
+            <i class="fas fa-chart-bar me-2"></i>Reports
+        </a>
+        <a href="#settings" class="nav-link">
+            <i class="fas fa-cog me-2"></i>Settings
+        </a>
+    </div>
+</div>
+
+<!-- System Statistics -->
+<div class="admin-stats">
+    <div class="stat-card stat-card-1">
+        <i class="fas fa-user-graduate fa-2x text-primary"></i>
+        <div class="stat-number">{{ stats.total_students }}</div>
+        <p class="mb-0">Total Students</p>
+    </div>
+    <div class="stat-card stat-card-2">
+        <i class="fas fa-chalkboard-teacher fa-2x text-success"></i>
+        <div class="stat-number">{{ stats.total_proctors }}</div>
+        <p class="mb-0">Proctors</p>
+    </div>
+    <div class="stat-card stat-card-3">
+        <i class="fas fa-building fa-2x text-warning"></i>
+        <div class="stat-number">{{ stats.total_supervisors }}</div>
+        <p class="mb-0">Supervisors</p>
+    </div>
+    <div class="stat-card stat-card-4">
+        <i class="fas fa-file-alt fa-2x text-danger"></i>
+        <div class="stat-number">{{ stats.total_leaves }}</div>
+        <p class="mb-0">Total Leaves</p>
+    </div>
+    <div class="stat-card stat-card-5">
+        <i class="fas fa-clock fa-2x text-info"></i>
+        <div class="stat-number">{{ stats.pending_leaves }}</div>
+        <p class="mb-0">Pending</p>
+    </div>
+    <div class="stat-card stat-card-6">
+        <i class="fas fa-exclamation-triangle fa-2x text-danger"></i>
+        <div class="stat-number">{{ stats.suspicious_leaves }}</div>
+        <p class="mb-0">Suspicious</p>
+    </div>
+</div>
+
+<!-- Quick Stats Row -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card bg-primary text-white">
+            <div class="card-body text-center">
+                <h6 class="mb-2">Today's Leaves</h6>
+                <h2 class="mb-0">{{ stats.today_leaves }}</h2>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-success text-white">
+            <div class="card-body text-center">
+                <h6 class="mb-2">Approved</h6>
+                <h2 class="mb-0">{{ stats.approved_leaves }}</h2>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-warning text-white">
+            <div class="card-body text-center">
+                <h6 class="mb-2">Pending</h6>
+                <h2 class="mb-0">{{ stats.pending_leaves }}</h2>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-danger text-white">
+            <div class="card-body text-center">
+                <h6 class="mb-2">Suspicious</h6>
+                <h2 class="mb-0">{{ stats.suspicious_leaves }}</h2>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Main Content -->
+<div class="row">
+    <!-- Recent Activity -->
+    <div class="col-md-7">
+        <div class="card card-vit mb-4">
+            <div class="card-header-vit">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-history me-2"></i>Recent System Activity
+                </h5>
+            </div>
+            <div class="card-body" style="max-height: 400px; overflow-y: auto;">
+                {% if recent_logs %}
+                    {% for log in recent_logs %}
+                    <div class="log-item log-{{ log.log_type }}">
+                        <div class="d-flex justify-content-between">
+                            <div>
+                                <strong>{{ log.action }}</strong>
+                                <small class="text-muted d-block">
+                                    {% if log.log_type == 'leave' %}
+                                        <i class="fas fa-calendar me-1"></i>
+                                    {% elif log.log_type == 'verification' %}
+                                        <i class="fas fa-qrcode me-1"></i>
+                                    {% else %}
+                                        <i class="fas fa-user-shield me-1"></i>
+                                    {% endif %}
+                                    {{ log.log_type|title }} - {{ log.user_id }}
+                                </small>
+                            </div>
+                            <div class="text-end">
+                                <small class="text-muted">{{ log.timestamp.strftime('%H:%M') }}</small><br>
+                                <small>{{ log.timestamp.strftime('%b %d') }}</small>
+                            </div>
+                        </div>
+                        {% if log.details %}
+                            <small class="text-muted">{{ log.details[:100] }}{% if log.details|length > 100 %}...{% endif %}</small>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <div class="text-center py-4">
+                        <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+                        <p class="text-muted">No recent activity</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <!-- Suspicious Leaves -->
+    <div class="col-md-5">
+        <div class="card card-vit mb-4">
+            <div class="card-header-vit" style="background: linear-gradient(90deg, #dc3545 0%, #fd7e14 100%);">
+                <h5 class="card-title mb-0 text-white">
+                    <i class="fas fa-exclamation-triangle me-2"></i>Suspicious Leaves
+                </h5>
+            </div>
+            <div class="card-body" style="max-height: 400px; overflow-y: auto;">
+                {% if suspicious_leaves %}
+                    {% for leave in suspicious_leaves %}
+                    <div class="alert alert-warning mb-3">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div>
+                                <h6 class="alert-heading mb-1">
+                                    {{ leave.student_name }} ({{ leave.reg_number }})
+                                </h6>
+                                <p class="mb-1 small">
+                                    <i class="fas fa-calendar me-1"></i>
+                                    {{ leave.from_date }} to {{ leave.to_date }}
+                                </p>
+                                <p class="mb-2 small">
+                                    <i class="fas fa-map-marker-alt me-1"></i>
+                                    {{ leave.destination }}
+                                </p>
+                                {% if leave.flag_reason %}
+                                    <p class="mb-1 small">
+                                        <strong>Flag Reason:</strong> {{ leave.flag_reason }}
+                                    </p>
+                                {% endif %}
+                            </div>
+                            <div class="text-end">
+                                <small class="text-muted">{{ leave.applied_at.strftime('%b %d') }}</small><br>
+                                <a href="{{ url_for('admin_leaves') }}?status={{ leave.status }}" 
+                                   class="btn btn-sm btn-outline-danger mt-1">
+                                    <i class="fas fa-eye"></i>
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <div class="text-center py-4">
+                        <i class="fas fa-check-circle fa-3x text-success mb-3"></i>
+                        <p class="text-muted">No suspicious leaves detected</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Quick Actions Modal -->
+<div class="modal fade" id="quickActionsModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header" style="background: #dc3545; color: white;">
+                <h5 class="modal-title">
+                    <i class="fas fa-bolt me-2"></i>Quick Actions
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row text-center quick-actions">
+                    <div class="col-md-4 mb-3">
+                        <a href="{{ url_for('admin_users') }}" class="btn btn-primary w-100">
+                            <i class="fas fa-user-plus me-2"></i>Add New User
+                        </a>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <button class="btn btn-success w-100" data-bs-toggle="modal" data-bs-target="#bulkUploadModal">
+                            <i class="fas fa-upload me-2"></i>Bulk Upload
+                        </button>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <a href="{{ url_for('admin_logs') }}" class="btn btn-info w-100">
+                            <i class="fas fa-file-download me-2"></i>Export Logs
+                        </a>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <button class="btn btn-warning w-100" onclick="backupDatabase()">
+                            <i class="fas fa-database me-2"></i>Backup DB
+                        </button>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <button class="btn btn-danger w-100" data-bs-toggle="modal" data-bs-target="#systemResetModal">
+                            <i class="fas fa-redo me-2"></i>System Reset
+                        </button>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <button class="btn btn-dark w-100" onclick="generateReports()">
+                            <i class="fas fa-chart-pie me-2"></i>Generate Reports
+                        </button>
+                    </div>
+                </div>
+                
+                <hr>
+                
+                <h6 class="mb-3">Quick Links:</h6>
+                <div class="row">
+                    <div class="col-md-6">
+                        <ul class="list-group list-group-flush">
+                            <li class="list-group-item">
+                                <a href="{{ url_for('admin_leaves') }}?status=pending">
+                                    <i class="fas fa-clock text-warning me-2"></i>Pending Leaves
+                                </a>
+                            </li>
+                            <li class="list-group-item">
+                                <a href="{{ url_for('admin_leaves') }}?suspicious_only=true">
+                                    <i class="fas fa-exclamation-triangle text-danger me-2"></i>All Suspicious
+                                </a>
+                            </li>
+                            <li class="list-group-item">
+                                <a href="{{ url_for('admin_logs') }}">
+                                    <i class="fas fa-history text-info me-2"></i>Recent Logs
+                                </a>
+                            </li>
+                        </ul>
+                    </div>
+                    <div class="col-md-6">
+                        <ul class="list-group list-group-flush">
+                            <li class="list-group-item">
+                                <a href="{{ url_for('admin_users') }}">
+                                    <i class="fas fa-users text-success me-2"></i>All Users
+                                </a>
+                            </li>
+                            <li class="list-group-item">
+                                <a href="#">
+                                    <i class="fas fa-cog text-secondary me-2"></i>System Settings
+                                </a>
+                            </li>
+                            <li class="list-group-item">
+                                <a href="#">
+                                    <i class="fas fa-shield-alt text-primary me-2"></i>Security
+                                </a>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Global variable to store auto-refresh state
+    let autoRefreshEnabled = localStorage.getItem('admin_auto_refresh') === 'true';
+    let refreshTimer = null;
+
+    // Initialize auto-refresh based on saved preference
+    document.addEventListener('DOMContentLoaded', function() {
+        initializeAutoRefresh();
+        setupEventListeners();
+        checkSystemStatus();
+    });
+
+    function initializeAutoRefresh() {
+        // Update toggle button state
+        const toggleBtn = document.getElementById('autoRefreshToggle');
+        if (toggleBtn) {
+            toggleBtn.checked = autoRefreshEnabled;
+        }
+        
+        if (autoRefreshEnabled) {
+            startAutoRefresh();
+        }
+    }
+
+    function setupEventListeners() {
+        // Add click handlers for quick action buttons
+        document.querySelectorAll('.quick-actions .btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                logQuickAction(this.innerText.trim());
+            });
+        });
+    }
+
+    function backupDatabase() {
+        if (confirm('Create database backup? This will export all system data to a secure file.')) {
+            showLoading('Creating backup...');
+            
+            fetch('/admin/export-data', {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-Token': getCsrfToken()
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                hideLoading();
+                if (data.success) {
+                    showNotification('Backup created successfully! Download link will be available shortly.', 'success');
+                    // Log the action
+                    logAdminAction('BACKUP', 'SYSTEM', null, 'Database backup initiated');
+                } else {
+                    showNotification('Backup failed: ' + (data.error || 'Unknown error'), 'error');
+                }
+            })
+            .catch(error => {
+                hideLoading();
+                showNotification('Backup failed: ' + error.message, 'error');
+                console.error('Backup error:', error);
+            });
+        }
+    }
+
+    function generateReports() {
+    const reportType = prompt('Select report type:\n1. Monthly Summary\n2. User Activity\n3. Leave Statistics\n4. Suspicious Activity\n\nEnter number (1-4):');
+    
+    if (!reportType || reportType < 1 || reportType > 4) return;
+    
+    const reportTypes = [
+        'monthly_summary',
+        'user_activity', 
+        'leave_statistics',
+        'suspicious_activity'
+    ];
+    
+    const selectedReport = reportTypes[parseInt(reportType) - 1];
+    const reportNames = [
+        'Monthly Summary',
+        'User Activity', 
+        'Leave Statistics',
+        'Suspicious Activity'
+    ];
+    
+    if (confirm(`Generate ${reportNames[parseInt(reportType)-1]} report as PDF?`)) {
+        showLoading(`Generating ${reportNames[parseInt(reportType)-1]} PDF report...`);
+        
+        // Open PDF in new tab for download
+        window.open(`/admin/generate-pdf/${selectedReport}`, '_blank');
+        
+        // Close loading after delay
+        setTimeout(() => {
+            hideLoading();
+            showNotification(`PDF report generated successfully! Check your downloads.`, 'success');
+        }, 2000);
+    }
+}
+
+function exportLogs() {
+    const format = confirm('Export logs as CSV? (Cancel for PDF)') ? 'csv' : 'pdf';
+    
+    if (format === 'pdf') {
+        showLoading('Generating logs PDF...');
+        
+        // Get date range
+        const today = new Date().toISOString().split('T')[0];
+        const lastMonth = new Date();
+        lastMonth.setMonth(lastMonth.getMonth() - 1);
+        const lastMonthStr = lastMonth.toISOString().split('T')[0];
+        
+        const dateRange = prompt('Enter date range (YYYY-MM-DD to YYYY-MM-DD) or leave empty for all:', 
+            `${lastMonthStr} to ${today}`);
+        
+        // Open PDF in new tab
+        let url = '/admin/generate-pdf/leave_statistics';
+        if (dateRange) {
+            const [date_from, date_to] = dateRange.split(' to ');
+            url += `?date_from=${date_from}&date_to=${date_to}`;
+        }
+        
+        window.open(url, '_blank');
+        
+        setTimeout(() => {
+            hideLoading();
+            showNotification('PDF report generated! Check your downloads.', 'success');
+        }, 2000);
+    } else {
+        // Existing CSV export code
+        const dateRange = prompt('Enter date range (YYYY-MM-DD to YYYY-MM-DD) or leave empty for all:', 
+            `${new Date().toISOString().split('T')[0]} to ${new Date().toISOString().split('T')[0]}`);
+        
+        showLoading(`Exporting logs as CSV...`);
+        
+        fetch('/admin/log-export', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-Token': getCsrfToken()
+            },
+            body: JSON.stringify({
+                format: 'csv',
+                date_range: dateRange,
+                export_type: 'logs'
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            hideLoading();
+            if (data.success) {
+                showNotification(`Logs exported successfully as CSV!`, 'success');
+                
+                // Create download link
+                const blob = new Blob([data.csv_content || ''], 
+                    { type: 'text/csv' });
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `admin_logs_${new Date().toISOString().split('T')[0]}.csv`;
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                document.body.removeChild(a);
+            } else {
+                showNotification('Export failed: ' + (data.error || 'Unknown error'), 'error');
+            }
+        })
+        .catch(error => {
+            hideLoading();
+            showNotification('Export failed: ' + error.message, 'error');
+            console.error('Export error:', error);
+        });
+    }
+}
+
+    function exportLogs() {
+        const format = confirm('Export logs as CSV? (Cancel for JSON)') ? 'csv' : 'json';
+        const dateRange = prompt('Enter date range (YYYY-MM-DD to YYYY-MM-DD) or leave empty for all:', 
+            `${new Date().toISOString().split('T')[0]} to ${new Date().toISOString().split('T')[0]}`);
+        
+        showLoading(`Exporting logs as ${format.toUpperCase()}...`);
+        
+        fetch('/admin/log-export', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-Token': getCsrfToken()
+            },
+            body: JSON.stringify({
+                format: format,
+                date_range: dateRange,
+                export_type: 'logs'
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            hideLoading();
+            if (data.success) {
+                showNotification(`Logs exported successfully as ${format.toUpperCase()}!`, 'success');
+                
+                // Create download link
+                const blob = new Blob([JSON.stringify(data.logs || data)], 
+                    { type: format === 'csv' ? 'text/csv' : 'application/json' });
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `admin_logs_${new Date().toISOString().split('T')[0]}.${format}`;
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                document.body.removeChild(a);
+            } else {
+                showNotification('Export failed: ' + (data.error || 'Unknown error'), 'error');
+            }
+        })
+        .catch(error => {
+            hideLoading();
+            showNotification('Export failed: ' + error.message, 'error');
+            console.error('Export error:', error);
+        });
+    }
+
+    function startAutoRefresh() {
+        if (refreshTimer) {
+            clearTimeout(refreshTimer);
+        }
+        
+        refreshTimer = setTimeout(() => {
+            if (autoRefreshEnabled && !document.hidden) {
+                refreshDashboard();
+            } else {
+                startAutoRefresh(); // Continue checking
+            }
+        }, 60000); // 60 seconds
+    }
+
+    function refreshDashboard() {
+        // Only refresh specific parts of the dashboard, not the whole page
+        fetch('/admin/dashboard/partial', {
+            method: 'GET',
+            headers: {
+                'X-Partial-Refresh': 'true'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.stats) {
+                updateDashboardStats(data.stats);
+            }
+            if (data.recent_logs) {
+                updateRecentLogs(data.recent_logs);
+            }
+            showNotification('Dashboard refreshed', 'info', 2000);
+            startAutoRefresh(); // Restart timer
+        })
+        .catch(error => {
+            console.error('Refresh error:', error);
+            startAutoRefresh(); // Restart timer even on error
+        });
+    }
+
+    function toggleAutoRefresh() {
+        autoRefreshEnabled = !autoRefreshEnabled;
+        localStorage.setItem('admin_auto_refresh', autoRefreshEnabled);
+        
+        if (autoRefreshEnabled) {
+            startAutoRefresh();
+            showNotification('Auto-refresh enabled (60s)', 'success', 2000);
+        } else {
+            if (refreshTimer) {
+                clearTimeout(refreshTimer);
+                refreshTimer = null;
+            }
+            showNotification('Auto-refresh disabled', 'warning', 2000);
+        }
+    }
+
+    function updateDashboardStats(stats) {
+        // Update statistics cards
+        document.querySelectorAll('.stat-number').forEach((el, index) => {
+            const keys = ['total_students', 'total_proctors', 'total_supervisors', 
+                        'total_leaves', 'pending_leaves', 'suspicious_leaves'];
+            if (stats[keys[index]] !== undefined) {
+                el.textContent = stats[keys[index]];
+                el.classList.add('updated');
+                setTimeout(() => el.classList.remove('updated'), 1000);
+            }
+        });
+    }
+
+    function updateRecentLogs(logs) {
+        // Update recent logs section
+        const logsContainer = document.querySelector('.card-body[style*="max-height: 400px"]');
+        if (logsContainer && logs.length > 0) {
+            // Implementation to update logs display
+            showNotification('Recent activity updated', 'info', 1500);
+        }
+    }
+
+    function checkSystemStatus() {
+        fetch('/test')
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'online') {
+                    // System is online
+                    updateSystemStatus(true);
+                }
+            })
+            .catch(error => {
+                console.warn('System status check failed:', error);
+                updateSystemStatus(false);
+            });
+    }
+
+    function updateSystemStatus(isOnline) {
+        const statusIndicator = document.createElement('div');
+        statusIndicator.className = `system-status ${isOnline ? 'online' : 'offline'}`;
+        statusIndicator.innerHTML = `
+            <i class="fas fa-circle ${isOnline ? 'text-success' : 'text-danger'}"></i>
+            <small>${isOnline ? 'System Online' : 'Connection Issues'}</small>
+        `;
+        
+        // Add to header if not already there
+        const existingStatus = document.querySelector('.system-status');
+        if (existingStatus) {
+            existingStatus.remove();
+        }
+        
+        document.querySelector('.d-flex.justify-content-between').appendChild(statusIndicator);
+    }
+
+    function showNotification(message, type = 'info', duration = 5000) {
+        // Create notification element
+        const notification = document.createElement('div');
+        notification.className = `notification alert alert-${type} alert-dismissible fade show`;
+        notification.innerHTML = `
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            ${message}
+        `;
+        
+        // Add to notification container
+        const container = document.getElementById('notification-container') || createNotificationContainer();
+        container.appendChild(notification);
+        
+        // Auto-remove after duration
+        if (duration > 0) {
+            setTimeout(() => {
+                if (notification.parentNode) {
+                    notification.remove();
+                }
+            }, duration);
+        }
+        
+        return notification;
+    }
+
+    function createNotificationContainer() {
+        const container = document.createElement('div');
+        container.id = 'notification-container';
+        container.style.cssText = `
+            position: fixed;
+            top: 80px;
+            right: 20px;
+            z-index: 9999;
+            max-width: 350px;
+        `;
+        document.body.appendChild(container);
+        return container;
+    }
+
+    function showLoading(message = 'Processing...') {
+        // Create or show loading overlay
+        let overlay = document.getElementById('loading-overlay');
+        if (!overlay) {
+            overlay = document.createElement('div');
+            overlay.id = 'loading-overlay';
+            overlay.style.cssText = `
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: rgba(0,0,0,0.7);
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                z-index: 99999;
+                color: white;
+                flex-direction: column;
+            `;
+            overlay.innerHTML = `
+                <div class="spinner-border mb-3" role="status"></div>
+                <div class="loading-message">${message}</div>
+            `;
+            document.body.appendChild(overlay);
+        } else {
+            overlay.style.display = 'flex';
+            overlay.querySelector('.loading-message').textContent = message;
+        }
+    }
+
+    function hideLoading() {
+        const overlay = document.getElementById('loading-overlay');
+        if (overlay) {
+            overlay.style.display = 'none';
+        }
+    }
+
+    function getCsrfToken() {
+        // Get CSRF token from meta tag or form
+        return document.querySelector('meta[name="csrf-token"]')?.content || '';
+    }
+
+    function logQuickAction(action) {
+        console.log(`Quick action performed: ${action}`);
+        // Could send to analytics or log endpoint
+    }
+
+    function logAdminAction(action, targetType, targetId, details) {
+        console.log(`Admin Action: ${action} - ${targetType} ${targetId || ''} - ${details}`);
+        // In production, this would make an API call to log the action
+    }
+
+    // Export functions for external use
+    window.adminDashboard = {
+        backupDatabase,
+        generateReports,
+        exportLogs,
+        toggleAutoRefresh,
+        showNotification,
+        refreshDashboard
+    };
+</script>
+{% endblock %}

@@ -1,0 +1,148 @@
+{% extends "base.html" %}
+
+{% block title %}Home - VIT Leave Management System{% endblock %}
+
+{% block content %}
+<div class="text-center mb-5">
+    <h1 class="display-4 fw-bold mb-4" style="color: var(--vit-blue);">
+        <i class="fas fa-university me-3"></i>
+        Welcome to VIT Leave Portal
+    </h1>
+    <p class="lead text-muted mb-5">
+        A secure and efficient system for managing student leaves with QR code verification
+    </p>
+</div>
+
+<div class="row g-4">
+    <div class="col-md-4">
+        <div class="card card-vit h-100">
+            <div class="card-header-vit text-center">
+                <i class="fas fa-user-graduate fa-3x mb-3"></i>
+                <h3 class="card-title mb-0">Student Portal</h3>
+            </div>
+            <div class="card-body">
+                <p class="card-text">Apply for leaves, track status, and generate QR codes for hostel verification.</p>
+                <ul class="list-unstyled">
+                    <li class="mb-2"><i class="fas fa-check-circle text-success me-2"></i> Apply for leaves online</li>
+                    <li class="mb-2"><i class="fas fa-check-circle text-success me-2"></i> Real-time status tracking</li>
+                    <li class="mb-2"><i class="fas fa-check-circle text-success me-2"></i> QR code generation</li>
+                    <li class="mb-2"><i class="fas fa-check-circle text-success me-2"></i> Leave history</li>
+                </ul>
+                <a href="{{ url_for('student_login') }}" class="btn btn-vit w-100 mt-3">
+                    <i class="fas fa-sign-in-alt me-2"></i>Student Login
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card card-vit h-100">
+            <div class="card-header-vit text-center">
+                <i class="fas fa-chalkboard-teacher fa-3x mb-3"></i>
+                <h3 class="card-title mb-0">Proctor Portal</h3>
+            </div>
+            <div class="card-body">
+                <p class="card-text">Review, approve or reject student leave applications from your proctees.</p>
+                <ul class="list-unstyled">
+                    <li class="mb-2"><i class="fas fa-check-circle text-success me-2"></i> View pending applications</li>
+                    <li class="mb-2"><i class="fas fa-check-circle text-success me-2"></i> One-click approval</li>
+                    <li class="mb-2"><i class="fas fa-check-circle text-success me-2"></i> Generate QR codes</li>
+                    <li class="mb-2"><i class="fas fa-check-circle text-success me-2"></i> Student management</li>
+                </ul>
+                <a href="{{ url_for('proctor_login') }}" class="btn btn-vit w-100 mt-3">
+                    <i class="fas fa-sign-in-alt me-2"></i>Proctor Login
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card card-vit h-100">
+            <div class="card-header-vit text-center">
+                <i class="fas fa-building fa-3x mb-3"></i>
+                <h3 class="card-title mb-0">Hostel Office</h3>
+            </div>
+            <div class="card-body">
+                <p class="card-text">Verify student leave approvals and generate permission slips using QR codes.</p>
+                <ul class="list-unstyled">
+                    <li class="mb-2"><i class="fas fa-check-circle text-success me-2"></i> QR code scanning</li>
+                    <li class="mb-2"><i class="fas fa-check-circle text-success me-2"></i> Automatic slip generation</li>
+                    <li class="mb-2"><i class="fas fa-check-circle text-success me-2"></i> Real-time verification</li>
+                    <li class="mb-2"><i class="fas fa-check-circle text-success me-2"></i> Audit logging</li>
+                </ul>
+                <a href="{{ url_for('hostel_login') }}" class="btn btn-vit w-100 mt-3">
+                    <i class="fas fa-sign-in-alt me-2"></i>Hostel Login
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add this after the existing portal cards in the main row -->
+<div class="row g-4 mt-3">
+    <div class="col-md-4 offset-md-4">
+        <div class="card card-vit h-100" style="border: 2px solid #dc3545;">
+            <div class="card-header-vit text-center" style="background: linear-gradient(90deg, #dc3545 0%, #6c757d 100%);">
+                <i class="fas fa-user-shield fa-3x mb-3"></i>
+                <h3 class="card-title mb-0">Admin Portal</h3>
+            </div>
+            <div class="card-body">
+                <p class="card-text">System administration, user management, and security monitoring.</p>
+                <ul class="list-unstyled">
+                    <li class="mb-2"><i class="fas fa-check-circle text-danger me-2"></i> User management</li>
+                    <li class="mb-2"><i class="fas fa-check-circle text-danger me-2"></i> System logs viewing</li>
+                    <li class="mb-2"><i class="fas fa-check-circle text-danger me-2"></i> Security monitoring</li>
+                    <li class="mb-2"><i class="fas fa-check-circle text-danger me-2"></i> Password reset</li>
+                </ul>
+                <a href="{{ url_for('admin_login') }}" class="btn btn-danger w-100 mt-3">
+                    <i class="fas fa-sign-in-alt me-2"></i>Admin Login
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-5">
+    <div class="col-12">
+        <div class="card card-vit">
+            <div class="card-body">
+                <h4 class="card-title mb-4" style="color: var(--vit-blue);">
+                    <i class="fas fa-info-circle me-2"></i>How It Works
+                </h4>
+                <div class="row text-center">
+                    <div class="col-md-3 mb-4">
+                        <div class="p-3 border rounded-circle d-inline-block mb-3" style="background: var(--vit-blue); color: white; width: 70px; height: 70px; line-height: 70px; font-size: 24px; font-weight: bold;">1</div>
+                        <h5>Apply Online</h5>
+                        <p class="text-muted">Student applies for leave on VTOP</p>
+                    </div>
+                    <div class="col-md-3 mb-4">
+                        <div class="p-3 border rounded-circle d-inline-block mb-3" style="background: var(--vit-orange); color: white; width: 70px; height: 70px; line-height: 70px; font-size: 24px; font-weight: bold;">2</div>
+                        <h5>Proctor Approval</h5>
+                        <p class="text-muted">Proctor reviews and approves the application</p>
+                    </div>
+                    <div class="col-md-3 mb-4">
+                        <div class="p-3 border rounded-circle d-inline-block mb-3" style="background: var(--vit-blue); color: white; width: 70px; height: 70px; line-height: 70px; font-size: 24px; font-weight: bold;">3</div>
+                        <h5>QR Code Generated</h5>
+                        <p class="text-muted">System generates secure QR code for student</p>
+                    </div>
+                    <div class="col-md-3 mb-4">
+                        <div class="p-3 border rounded-circle d-inline-block mb-3" style="background: var(--vit-orange); color: white; width: 70px; height: 70px; line-height: 70px; font-size: 24px; font-weight: bold;">4</div>
+                        <h5>Hostel Verification</h5>
+                        <p class="text-muted">Hostel scans QR and prints permission slip</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="alert alert-info alert-vit mt-4">
+    <h5><i class="fas fa-shield-alt me-2"></i>Security Features</h5>
+    <ul class="mb-0">
+        <li>QR codes expire after 24 hours to prevent misuse</li>
+        <li>All verifications are logged for audit purposes</li>
+        <li>No more fake screenshots or cloned applications</li>
+        <li>Real-time database validation for every scan</li>
+    </ul>
+</div>
+{% endblock %}

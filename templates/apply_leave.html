@@ -1,0 +1,437 @@
+{% extends "base.html" %}
+
+{% block title %}Apply for Leave - VIT LMS{% endblock %}
+
+{% block extra_css %}
+<style>
+    .leave-form .form-section {
+        background: white;
+        padding: 25px;
+        border-radius: 10px;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+        margin-bottom: 25px;
+    }
+    
+    .form-section h5 {
+        color: var(--vit-blue);
+        border-bottom: 2px solid #eee;
+        padding-bottom: 10px;
+        margin-bottom: 20px;
+    }
+    
+    .time-inputs .input-group {
+        margin-bottom: 10px;
+    }
+    
+    .preview-card {
+        background: #f8f9fa;
+        border-left: 4px solid var(--vit-orange);
+        padding: 20px;
+        border-radius: 8px;
+        margin-bottom: 20px;
+    }
+    
+    #durationDisplay {
+        font-weight: bold;
+        color: var(--vit-blue);
+    }
+    
+    .emergency-badge {
+        background: #dc3545;
+        color: white;
+        padding: 3px 10px;
+        border-radius: 15px;
+        font-size: 0.8rem;
+        display: inline-block;
+        margin-left: 10px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-lg-8 mx-auto">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h1 class="h3 mb-0" style="color: var(--vit-blue);">
+                    <i class="fas fa-paper-plane me-2"></i>Apply for Leave
+                </h1>
+                <p class="text-muted mb-0">Fill the form below to apply for leave</p>
+            </div>
+            <a href="{{ url_for('student_dashboard') }}" class="btn btn-outline-secondary">
+                <i class="fas fa-arrow-left me-2"></i>Back to Dashboard
+            </a>
+        </div>
+
+        {% if error %}
+        <div class="alert alert-danger alert-vit">
+            <i class="fas fa-exclamation-circle me-2"></i>{{ error }}
+        </div>
+        {% endif %}
+
+        <form method="POST" action="{{ url_for('apply_leave') }}" class="leave-form" id="leaveForm">
+            <!-- Leave Type Section -->
+            <div class="form-section">
+                <h5>
+                    <i class="fas fa-clipboard-list me-2"></i>Leave Type & Duration
+                </h5>
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label for="leave_type" class="form-label required">Type of Leave</label>
+                        <select class="form-select" id="leave_type" name="leave_type" required>
+                            <option value="" selected disabled>Select leave type</option>
+                            <option value="regular">Regular Leave</option>
+                            <option value="emergency">Emergency Leave</option>
+                            <option value="medical">Medical Leave</option>
+                        </select>
+                        <div class="form-text">
+                            <i class="fas fa-info-circle me-1"></i>
+                            Medical leave requires doctor's certificate
+                        </div>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <div class="form-check form-switch mt-4">
+                            <input class="form-check-input" type="checkbox" id="parent_contacted" name="parent_contacted">
+                            <label class="form-check-label" for="parent_contacted">
+                                Parent has been contacted
+                            </label>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label for="from_date" class="form-label required">From Date</label>
+                        <input type="date" class="form-control" id="from_date" name="from_date" required 
+                               min="{{ today }}" onchange="updateDuration()">
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label for="to_date" class="form-label required">To Date</label>
+                        <input type="date" class="form-control" id="to_date" name="to_date" required
+                               min="{{ today }}" onchange="updateDuration()">
+                    </div>
+                </div>
+                
+                <div class="row time-inputs">
+                    <div class="col-md-6 mb-3">
+                        <label for="from_time" class="form-label required">From Time</label>
+                        <select class="form-select" id="from_time" name="from_time" required onchange="updateDuration()">
+                            <option value="" selected disabled>Select time</option>
+                            {% for hour in range(6, 22) %}
+                                {% set hour_str = "%02d"|format(hour) %}
+                                <option value="{{ hour_str }}:00">{{ hour_str }}:00</option>
+                                <option value="{{ hour_str }}:30">{{ hour_str }}:30</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label for="to_time" class="form-label required">To Time</label>
+                        <select class="form-select" id="to_time" name="to_time" required onchange="updateDuration()">
+                            <option value="" selected disabled>Select time</option>
+                            {% for hour in range(6, 22) %}
+                                {% set hour_str = "%02d"|format(hour) %}
+                                <option value="{{ hour_str }}:00">{{ hour_str }}:00</option>
+                                <option value="{{ hour_str }}:30">{{ hour_str }}:30</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="preview-card">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p class="mb-1"><strong>Selected Duration:</strong></p>
+                            <p id="durationDisplay" class="h5">--</p>
+                        </div>
+                        <div class="col-md-6">
+                            <p class="mb-1"><strong>Total Hours:</strong></p>
+                            <p id="totalHours" class="h5">-- hours</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Destination & Details Section -->
+            <div class="form-section">
+                <h5>
+                    <i class="fas fa-map-marker-alt me-2"></i>Destination & Details
+                </h5>
+                <div class="mb-3">
+                    <label for="destination" class="form-label required">Destination</label>
+                    <input type="text" class="form-control" id="destination" name="destination" 
+                           placeholder="Where are you going? (e.g., Chennai, Bangalore)" required>
+                    <div class="form-text">
+                        <i class="fas fa-info-circle me-1"></i>
+                        Please mention city/town and specific location if possible
+                    </div>
+                </div>
+                
+                <div class="mb-3">
+                    <label for="address" class="form-label">Complete Address</label>
+                    <textarea class="form-control" id="address" name="address" rows="2" 
+                              placeholder="Full address of your destination (optional)"></textarea>
+                </div>
+                
+                <div class="mb-3">
+                    <label for="emergency_contact" class="form-label">Emergency Contact at Destination</label>
+                    <div class="input-group">
+                        <span class="input-group-text">
+                            <i class="fas fa-phone"></i>
+                        </span>
+                        <input type="tel" class="form-control" id="emergency_contact" name="emergency_contact"
+                               placeholder="Emergency contact number (optional)"
+                               pattern="[0-9]{10}" maxlength="10">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Reason Section -->
+            <div class="form-section">
+                <h5>
+                    <i class="fas fa-comment-alt me-2"></i>Reason for Leave
+                </h5>
+                <div class="mb-3">
+                    <label for="reason" class="form-label required">Detailed Reason</label>
+                    <textarea class="form-control" id="reason" name="reason" rows="4" 
+                              placeholder="Please provide detailed reason for your leave..." required></textarea>
+                    <div class="form-text">
+                        <i class="fas fa-info-circle me-1"></i>
+                        Be specific and detailed. Your proctor will review this.
+                    </div>
+                </div>
+                
+                <div class="mb-3">
+                    <label class="form-label">Additional Documents</label>
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="medical_certificate">
+                        <label class="form-check-label" for="medical_certificate">
+                            Medical Certificate (for medical leaves)
+                        </label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="train_ticket">
+                        <label class="form-check-label" for="train_ticket">
+                            Travel Ticket (if applicable)
+                        </label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="parent_letter">
+                        <label class="form-check-label" for="parent_letter">
+                            Parent Consent Letter (if applicable)
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Emergency Alert -->
+            <div class="alert alert-warning alert-vit" id="emergencyAlert" style="display: none;">
+                <i class="fas fa-exclamation-triangle me-2"></i>
+                <strong>Emergency Leave Selected:</strong> For emergency leaves, please contact your proctor immediately after submitting this application.
+            </div>
+
+            <!-- Declaration -->
+            <div class="form-section">
+                <h5>
+                    <i class="fas fa-file-signature me-2"></i>Declaration
+                </h5>
+                <div class="form-check mb-3">
+                    <input class="form-check-input" type="checkbox" id="declaration" required>
+                    <label class="form-check-label" for="declaration">
+                        I hereby declare that the information provided above is true and correct to the best of my knowledge. 
+                        I understand that providing false information may lead to disciplinary action.
+                    </label>
+                </div>
+                <div class="form-check mb-3">
+                    <input class="form-check-input" type="checkbox" id="rules_agreement" required>
+                    <label class="form-check-label" for="rules_agreement">
+                        I agree to follow all VIT rules and regulations during my leave period and return to campus on or before the specified time.
+                    </label>
+                </div>
+                <div class="form-check mb-3">
+                    <input class="form-check-input" type="checkbox" id="parental_consent" required>
+                    <label class="form-check-label" for="parental_consent">
+                        I confirm that my parents/guardians are aware of this leave and have given their consent.
+                    </label>
+                </div>
+            </div>
+
+            <!-- Submit Buttons -->
+            <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-4">
+                <button type="button" class="btn btn-outline-secondary me-2" onclick="previewApplication()">
+                    <i class="fas fa-eye me-2"></i>Preview Application
+                </button>
+                <button type="submit" class="btn btn-vit">
+                    <i class="fas fa-paper-plane me-2"></i>Submit Application
+                </button>
+            </div>
+        </form>
+        
+        <!-- Preview Modal -->
+        <div class="modal fade" id="previewModal" tabindex="-1">
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header" style="background: var(--vit-blue); color: white;">
+                        <h5 class="modal-title">
+                            <i class="fas fa-eye me-2"></i>Application Preview
+                        </h5>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body" id="previewContent">
+                        <!-- Preview content will be loaded here -->
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                        <button type="button" class="btn btn-vit" onclick="submitForm()">
+                            <i class="fas fa-check me-2"></i>Confirm & Submit
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Set minimum date to today
+    const today = new Date().toISOString().split('T')[0];
+    document.getElementById('from_date').min = today;
+    document.getElementById('to_date').min = today;
+    
+    // Update minimum to_date when from_date changes
+    document.getElementById('from_date').addEventListener('change', function() {
+        document.getElementById('to_date').min = this.value;
+        updateDuration();
+    });
+    
+    // Show/hide emergency alert
+    document.getElementById('leave_type').addEventListener('change', function() {
+        const emergencyAlert = document.getElementById('emergencyAlert');
+        if (this.value === 'emergency') {
+            emergencyAlert.style.display = 'block';
+        } else {
+            emergencyAlert.style.display = 'none';
+        }
+        updateDuration();
+    });
+    
+    function updateDuration() {
+        const fromDate = document.getElementById('from_date').value;
+        const toDate = document.getElementById('to_date').value;
+        const fromTime = document.getElementById('from_time').value;
+        const toTime = document.getElementById('to_time').value;
+        
+        if (fromDate && toDate && fromTime && toTime) {
+            // Format dates nicely
+            const fromDateObj = new Date(fromDate);
+            const toDateObj = new Date(toDate);
+            
+            const options = { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' };
+            const fromFormatted = fromDateObj.toLocaleDateString('en-US', options);
+            const toFormatted = toDateObj.toLocaleDateString('en-US', options);
+            
+            document.getElementById('durationDisplay').innerHTML = `
+                ${fromFormatted} ${fromTime}<br>
+                <i class="fas fa-arrow-down"></i><br>
+                ${toFormatted} ${toTime}
+            `;
+            
+            // Calculate total hours
+            const fromDateTime = new Date(fromDate + 'T' + fromTime);
+            const toDateTime = new Date(toDate + 'T' + toTime);
+            const diffMs = toDateTime - fromDateTime;
+            const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+            const diffDays = Math.floor(diffHours / 24);
+            const remainingHours = diffHours % 24;
+            
+            let durationText = '';
+            if (diffDays > 0) {
+                durationText = `${diffDays} day${diffDays > 1 ? 's' : ''}`;
+                if (remainingHours > 0) {
+                    durationText += ` ${remainingHours} hour${remainingHours > 1 ? 's' : ''}`;
+                }
+            } else {
+                durationText = `${diffHours} hour${diffHours > 1 ? 's' : ''}`;
+            }
+            
+            document.getElementById('totalHours').textContent = durationText;
+        }
+    }
+    
+    function previewApplication() {
+        // Validate form first
+        const form = document.getElementById('leaveForm');
+        if (!form.checkValidity()) {
+            form.reportValidity();
+            return;
+        }
+        
+        // Gather form data
+        const formData = new FormData(form);
+        const leaveType = formData.get('leave_type');
+        const fromDate = formData.get('from_date');
+        const toDate = formData.get('to_date');
+        const fromTime = formData.get('from_time');
+        const toTime = formData.get('to_time');
+        const destination = formData.get('destination');
+        const reason = formData.get('reason');
+        const parentContacted = formData.get('parent_contacted') ? 'Yes' : 'No';
+        
+        // Format dates
+        const fromDateObj = new Date(fromDate);
+        const toDateObj = new Date(toDate);
+        const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+        const fromFormatted = fromDateObj.toLocaleDateString('en-US', options);
+        const toFormatted = toDateObj.toLocaleDateString('en-US', options);
+        
+        // Build preview HTML
+        const previewHTML = `
+            <div class="preview-card">
+                <h5>Leave Application Summary</h5>
+                <hr>
+                <div class="row">
+                    <div class="col-md-6">
+                        <p><strong>Leave Type:</strong><br>
+                        <span class="badge bg-${leaveType === 'emergency' ? 'danger' : leaveType === 'medical' ? 'info' : 'primary'}">
+                            ${leaveType.toUpperCase()}
+                        </span></p>
+                        
+                        <p><strong>From:</strong><br>
+                        ${fromFormatted}<br>
+                        <small>${fromTime}</small></p>
+                        
+                        <p><strong>To:</strong><br>
+                        ${toFormatted}<br>
+                        <small>${toTime}</small></p>
+                    </div>
+                    <div class="col-md-6">
+                        <p><strong>Destination:</strong><br>${destination}</p>
+                        <p><strong>Parent Contacted:</strong><br>${parentContacted}</p>
+                    </div>
+                </div>
+                <hr>
+                <p><strong>Reason:</strong></p>
+                <p>${reason}</p>
+                <hr>
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle me-2"></i>
+                    Your application will be sent to your proctor for approval. 
+                    You can track the status from your dashboard.
+                </div>
+            </div>
+        `;
+        
+        document.getElementById('previewContent').innerHTML = previewHTML;
+        const previewModal = new bootstrap.Modal(document.getElementById('previewModal'));
+        previewModal.show();
+    }
+    
+    function submitForm() {
+        document.getElementById('leaveForm').submit();
+    }
+    
+    // Initialize form with today's date
+    document.getElementById('from_date').value = today;
+    document.getElementById('to_date').value = today;
+    updateDuration();
+</script>
+{% endblock %}

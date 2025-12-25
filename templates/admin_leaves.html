@@ -1,0 +1,347 @@
+{% extends "base.html" %}
+
+{% block title %}All Leaves - Admin Panel{% endblock %}
+
+{% block extra_css %}
+<style>
+    .filter-card {
+        background: white;
+        border-radius: 10px;
+        padding: 20px;
+        margin-bottom: 25px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+    }
+    
+    .filter-group {
+        margin-bottom: 15px;
+    }
+    
+    .leave-row {
+        transition: all 0.3s ease;
+        border-left: 5px solid transparent;
+    }
+    
+    .leave-row.pending { border-left-color: #ffc107; }
+    .leave-row.approved { border-left-color: #28a745; }
+    .leave-row.rejected { border-left-color: #dc3545; }
+    .leave-row.completed { border-left-color: #17a2b8; }
+    .leave-row.suspicious { border-left-color: #dc3545; background-color: #fff5f5; }
+    
+    .leave-row:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    }
+    
+    .flag-btn {
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .flag-btn::after {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(220, 53, 69, 0.1);
+        opacity: 0;
+        transition: opacity 0.3s;
+    }
+    
+    .flag-btn:hover::after {
+        opacity: 1;
+    }
+    
+    .action-dropdown .dropdown-menu {
+        min-width: 200px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h1 class="h3 mb-0" style="color: #dc3545;">
+            <i class="fas fa-calendar-alt me-2"></i>All Leave Applications
+        </h1>
+        <p class="text-muted mb-0">Total: {{ leaves|length }} applications</p>
+    </div>
+    <div class="d-flex gap-2">
+        <a href="{{ url_for('admin_dashboard') }}" class="btn btn-outline-secondary">
+            <i class="fas fa-arrow-left me-2"></i>Back to Dashboard
+        </a>
+        <button class="btn btn-vit" onclick="exportLeaves()">
+            <i class="fas fa-file-export me-2"></i>Export
+        </button>
+    </div>
+</div>
+
+<!-- Filters -->
+<div class="filter-card">
+    <h5 class="mb-3"><i class="fas fa-filter me-2"></i>Filter Leaves</h5>
+    <form method="GET" action="{{ url_for('admin_leaves') }}" class="row g-3">
+        <div class="col-md-3">
+            <label class="form-label">Status</label>
+            <select name="status" class="form-select">
+                <option value="">All Status</option>
+                <option value="pending" {% if filters.status == 'pending' %}selected{% endif %}>Pending</option>
+                <option value="approved" {% if filters.status == 'approved' %}selected{% endif %}>Approved</option>
+                <option value="rejected" {% if filters.status == 'rejected' %}selected{% endif %}>Rejected</option>
+                <option value="completed" {% if filters.status == 'completed' %}selected{% endif %}>Completed</option>
+            </select>
+        </div>
+        <div class="col-md-3">
+            <label class="form-label">Leave Type</label>
+            <select name="leave_type" class="form-select">
+                <option value="">All Types</option>
+                <option value="regular" {% if filters.leave_type == 'regular' %}selected{% endif %}>Regular</option>
+                <option value="emergency" {% if filters.leave_type == 'emergency' %}selected{% endif %}>Emergency</option>
+                <option value="medical" {% if filters.leave_type == 'medical' %}selected{% endif %}>Medical</option>
+            </select>
+        </div>
+        <div class="col-md-2">
+            <label class="form-label">From Date</label>
+            <input type="date" name="date_from" class="form-control" value="{{ filters.date_from }}">
+        </div>
+        <div class="col-md-2">
+            <label class="form-label">To Date</label>
+            <input type="date" name="date_to" class="form-control" value="{{ filters.date_to }}">
+        </div>
+        <div class="col-md-2 d-flex align-items-end">
+            <div class="form-check form-switch mb-2">
+                <input class="form-check-input" type="checkbox" id="suspiciousOnly" 
+                       name="suspicious_only" value="true" 
+                       {% if filters.suspicious_only %}checked{% endif %}>
+                <label class="form-check-label" for="suspiciousOnly">
+                    Suspicious Only
+                </label>
+            </div>
+        </div>
+        <div class="col-12">
+            <div class="d-flex gap-2">
+                <button type="submit" class="btn btn-vit">
+                    <i class="fas fa-search me-2"></i>Apply Filters
+                </button>
+                <a href="{{ url_for('admin_leaves') }}" class="btn btn-outline-secondary">
+                    <i class="fas fa-redo me-2"></i>Clear
+                </a>
+            </div>
+        </div>
+    </form>
+</div>
+
+<!-- Leaves Table -->
+<div class="card card-vit">
+    <div class="card-body">
+        {% if leaves %}
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Student</th>
+                        <th>Type</th>
+                        <th>Duration</th>
+                        <th>Destination</th>
+                        <th>Status</th>
+                        <th>Proctor</th>
+                        <th>Applied</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for leave in leaves %}
+                    <tr class="leave-row {{ leave.status }} {% if leave.suspicious_flag %}suspicious{% endif %}">
+                        <td>
+                            <strong>#{{ leave.leave_id }}</strong>
+                            {% if leave.suspicious_flag %}
+                            <br><small class="text-danger"><i class="fas fa-flag"></i> Flagged</small>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <strong>{{ leave.student_name }}</strong><br>
+                            <small class="text-muted">{{ leave.reg_number }}</small>
+                        </td>
+                        <td>
+                            <span class="badge bg-{{ 'danger' if leave.leave_type == 'emergency' else 'info' if leave.leave_type == 'medical' else 'primary' }}">
+                                {{ leave.leave_type|title }}
+                            </span>
+                        </td>
+                        <td>
+                            {{ leave.from_date }} to {{ leave.to_date }}<br>
+                            <small>{{ leave.from_time }} - {{ leave.to_time }}</small>
+                        </td>
+                        <td>
+                            <span class="d-inline-block text-truncate" style="max-width: 150px;">
+                                {{ leave.destination }}
+                            </span>
+                        </td>
+                        <td>
+                            <span class="badge bg-{{ 'warning' if leave.status == 'pending' else 'success' if leave.status == 'approved' else 'danger' if leave.status == 'rejected' else 'info' }}">
+                                {{ leave.status|upper }}
+                            </span>
+                        </td>
+                        <td>
+                            <small>{{ leave.proctor_name }}</small>
+                        </td>
+                        <td>
+                            <small>{{ leave.applied_at.strftime('%b %d, %H:%M') }}</small>
+                        </td>
+                        <td>
+                            <div class="dropdown">
+                                <button class="btn btn-sm btn-outline-primary dropdown-toggle" type="button" 
+                                        data-bs-toggle="dropdown">
+                                    <i class="fas fa-cog"></i>
+                                </button>
+                                <ul class="dropdown-menu action-dropdown">
+                                    <li>
+                                        <a class="dropdown-item" href="#" onclick="viewLeaveDetails({{ leave.leave_id }})">
+                                            <i class="fas fa-eye me-2"></i>View Details
+                                        </a>
+                                    </li>
+                                    <li><hr class="dropdown-divider"></li>
+                                    {% if leave.suspicious_flag %}
+                                    <li>
+                                        <a class="dropdown-item" href="{{ url_for('admin_remove_flag', leave_id=leave.leave_id) }}">
+                                            <i class="fas fa-flag me-2 text-success"></i>Remove Flag
+                                        </a>
+                                    </li>
+                                    {% else %}
+                                    <li>
+                                        <button class="dropdown-item" onclick="flagSuspicious({{ leave.leave_id }})">
+                                            <i class="fas fa-flag me-2 text-danger"></i>Flag Suspicious
+                                        </button>
+                                    </li>
+                                    {% endif %}
+                                    <li><hr class="dropdown-divider"></li>
+                                    {% if leave.status == 'pending' %}
+                                    <li>
+                                        <a class="dropdown-item text-success" href="#">
+                                            <i class="fas fa-check me-2"></i>Approve
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a class="dropdown-item text-danger" href="#">
+                                            <i class="fas fa-times me-2"></i>Reject
+                                        </a>
+                                    </li>
+                                    {% endif %}
+                                    <li>
+                                        <a class="dropdown-item text-info" href="#">
+                                            <i class="fas fa-edit me-2"></i>Edit
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a class="dropdown-item text-danger" href="#" onclick="deleteLeave({{ leave.leave_id }})">
+                                            <i class="fas fa-trash me-2"></i>Delete
+                                        </a>
+                                    </li>
+                                </ul>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        
+        <!-- Pagination -->
+        <nav aria-label="Page navigation">
+            <ul class="pagination justify-content-center mt-4">
+                <li class="page-item disabled">
+                    <a class="page-link" href="#" tabindex="-1">Previous</a>
+                </li>
+                <li class="page-item active"><a class="page-link" href="#">1</a></li>
+                <li class="page-item"><a class="page-link" href="#">2</a></li>
+                <li class="page-item"><a class="page-link" href="#">3</a></li>
+                <li class="page-item">
+                    <a class="page-link" href="#">Next</a>
+                </li>
+            </ul>
+        </nav>
+        
+        {% else %}
+        <div class="text-center py-5">
+            <i class="fas fa-inbox fa-4x text-muted mb-3"></i>
+            <h5>No Leaves Found</h5>
+            <p class="text-muted">No leave applications match your filters.</p>
+            <a href="{{ url_for('admin_leaves') }}" class="btn btn-vit">
+                <i class="fas fa-redo me-2"></i>Clear Filters
+            </a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Flag Suspicious Modal -->
+<div class="modal fade" id="flagModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title">
+                    <i class="fas fa-flag me-2"></i>Flag as Suspicious
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" action="" id="flagForm">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="flagReason" class="form-label">Reason for Flagging</label>
+                        <textarea class="form-control" id="flagReason" name="reason" rows="4" 
+                                  placeholder="Enter detailed reason for flagging this leave as suspicious..." required></textarea>
+                        <div class="form-text">
+                            <i class="fas fa-info-circle me-1"></i>
+                            This will be recorded in the system logs and visible to other admins.
+                        </div>
+                    </div>
+                    <div class="alert alert-warning">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        Flagged leaves will be highlighted and reviewed by senior administrators.
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-danger">Flag as Suspicious</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    let currentLeaveId = null;
+    
+    function flagSuspicious(leaveId) {
+        currentLeaveId = leaveId;
+        const flagForm = document.getElementById('flagForm');
+        flagForm.action = `/admin/flag-suspicious/${leaveId}`;
+        const flagModal = new bootstrap.Modal(document.getElementById('flagModal'));
+        flagModal.show();
+    }
+    
+    function viewLeaveDetails(leaveId) {
+        alert(`View details for leave #${leaveId}\nFeature coming soon!`);
+        // In production, this would open a modal with detailed information
+    }
+    
+    function deleteLeave(leaveId) {
+        if (confirm(`Are you sure you want to delete leave #${leaveId}? This action cannot be undone.`)) {
+            alert(`Delete leave #${leaveId}\nFeature coming soon!`);
+            // In production, this would make an API call
+        }
+    }
+    
+    function exportLeaves() {
+        alert('Exporting leaves data... This may take a moment.');
+        // In production, this would trigger a CSV/Excel export
+    }
+    
+    // Auto-refresh every 30 seconds if on first page
+    if (window.location.search.includes('page=1') || !window.location.search.includes('page=')) {
+        setTimeout(() => {
+            window.location.reload();
+        }, 30000);
+    }
+</script>
+{% endblock %}
