@@ -1280,7 +1280,10 @@ def export_logs_csv():
         return jsonify({'success': False, 'error': str(e)})
 
 
+<<<<<<< HEAD
 # Add these routes to app.py after the existing routes
+=======
+>>>>>>> 6d065b5aa7aa103defa59ffa028e9d3d6c645949
 
 @app.route('/admin/leave-details/<int:leave_id>')
 @admin_required
@@ -1291,6 +1294,7 @@ def admin_leave_details(leave_id):
         connection = db.get_connection()
         
         with connection.cursor() as cursor:
+<<<<<<< HEAD
             # First, check if the admin_leave_flags table exists
             cursor.execute("""
                 SELECT table_name 
@@ -1355,11 +1359,44 @@ def admin_leave_details(leave_id):
                 """
             
             cursor.execute(query, (leave_id,))
+=======
+            # Get detailed leave information
+            cursor.execute("""
+                SELECT 
+                    l.*,
+                    s.name as student_name,
+                    s.reg_number,
+                    s.hostel_block,
+                    s.room_number,
+                    s.phone,
+                    s.parent_phone,
+                    p.name as proctor_name,
+                    p.employee_id as proctor_id,
+                    p.email as proctor_email,
+                    p.department as proctor_dept,
+                    hs.name as supervisor_name,
+                    hs.supervisor_id,
+                    hs.hostel_block as supervisor_block,
+                    al.admin_id as flagged_by_admin,
+                    al.name as flagged_by_name,
+                    al.reason as flag_reason,
+                    al.created_at as flagged_at
+                FROM leaves l
+                JOIN students s ON l.student_reg = s.reg_number
+                JOIN proctors p ON l.proctor_id = p.employee_id
+                LEFT JOIN hostel_supervisors hs ON s.hostel_block = hs.hostel_block
+                LEFT JOIN admin_leave_flags alf ON l.leave_id = alf.leave_id
+                LEFT JOIN admins al ON alf.flagged_by = al.admin_id
+                WHERE l.leave_id = %s
+            """, (leave_id,))
+            
+>>>>>>> 6d065b5aa7aa103defa59ffa028e9d3d6c645949
             leave = cursor.fetchone()
             
             if not leave:
                 return jsonify({'error': 'Leave not found'}), 404
             
+<<<<<<< HEAD
             # Check if leave_audit_log table exists
             cursor.execute("""
                 SELECT table_name 
@@ -1399,6 +1436,26 @@ def admin_leave_details(leave_id):
             parent_contact = None
             
             if parent_contacted and has_parent_contacts:
+=======
+            # Get approval/verification history
+            cursor.execute("""
+                SELECT 
+                    action,
+                    performed_by,
+                    performed_by_type,
+                    timestamp,
+                    notes
+                FROM leave_audit_log
+                WHERE leave_id = %s
+                ORDER BY timestamp DESC
+            """, (leave_id,))
+            
+            audit_logs = cursor.fetchall()
+            
+            # Get parent contact information
+            parent_contacted = leave.get('parent_contacted', False)
+            if parent_contacted:
+>>>>>>> 6d065b5aa7aa103defa59ffa028e9d3d6c645949
                 cursor.execute("""
                     SELECT 
                         contact_time,
@@ -1408,7 +1465,14 @@ def admin_leave_details(leave_id):
                     FROM parent_contacts
                     WHERE leave_id = %s
                 """, (leave_id,))
+<<<<<<< HEAD
                 parent_contact = cursor.fetchone()
+=======
+                
+                parent_contact = cursor.fetchone()
+            else:
+                parent_contact = None
+>>>>>>> 6d065b5aa7aa103defa59ffa028e9d3d6c645949
             
             # Get QR verification history
             cursor.execute("""
@@ -1420,6 +1484,10 @@ def admin_leave_details(leave_id):
                 WHERE vl.leave_id = %s
                 ORDER BY timestamp DESC
             """, (leave_id,))
+<<<<<<< HEAD
+=======
+            
+>>>>>>> 6d065b5aa7aa103defa59ffa028e9d3d6c645949
             verification_logs = cursor.fetchall()
             
             # Format the response
@@ -1428,6 +1496,7 @@ def admin_leave_details(leave_id):
                 'student': {
                     'name': leave['student_name'],
                     'reg_number': leave['reg_number'],
+<<<<<<< HEAD
                     'hostel_block': leave.get('hostel_block', 'N/A'),
                     'room_number': leave.get('room_number', 'N/A'),
                     'phone': leave.get('phone', 'N/A'),
@@ -1462,6 +1531,42 @@ def admin_leave_details(leave_id):
                     'flagged_by': leave.get('flagged_by_name') if leave.get('flagged_by_name') else None,
                     'reason': leave.get('flag_reason') if leave.get('flag_reason') else None,
                     'flagged_at': str(leave.get('flagged_at')) if leave.get('flagged_at') else None
+=======
+                    'hostel_block': leave['hostel_block'],
+                    'room_number': leave['room_number'],
+                    'phone': leave['phone'],
+                    'parent_phone': leave['parent_phone']
+                },
+                'leave_details': {
+                    'type': leave['leave_type'],
+                    'from_date': str(leave['from_date']),
+                    'to_date': str(leave['to_date']),
+                    'from_time': str(leave['from_time']),
+                    'to_time': str(leave['to_time']),
+                    'duration_days': (leave['to_date'] - leave['from_date']).days + 1,
+                    'reason': leave['reason'],
+                    'destination': leave['destination'],
+                    'parent_contacted': parent_contacted,
+                    'status': leave['status'],
+                    'applied_at': str(leave['applied_at'])
+                },
+                'proctor': {
+                    'name': leave['proctor_name'],
+                    'employee_id': leave['proctor_id'],
+                    'email': leave['proctor_email'],
+                    'department': leave['proctor_dept']
+                },
+                'hostel_supervisor': {
+                    'name': leave['supervisor_name'] if leave['supervisor_name'] else 'Not Assigned',
+                    'supervisor_id': leave['supervisor_id'],
+                    'hostel_block': leave['supervisor_block']
+                },
+                'suspicious_flag': {
+                    'is_flagged': leave['suspicious_flag'],
+                    'flagged_by': leave['flagged_by_name'] if leave['flagged_by_name'] else None,
+                    'reason': leave['flag_reason'],
+                    'flagged_at': str(leave['flagged_at']) if leave['flagged_at'] else None
+>>>>>>> 6d065b5aa7aa103defa59ffa028e9d3d6c645949
                 },
                 'audit_logs': [
                     {
@@ -1484,10 +1589,17 @@ def admin_leave_details(leave_id):
                     for log in verification_logs
                 ],
                 'qr_code': {
+<<<<<<< HEAD
                     'token': leave.get('qr_token'),
                     'generated_at': str(leave.get('qr_generated_at')) if leave.get('qr_generated_at') else None,
                     'expires_at': str(leave.get('qr_expiry')) if leave.get('qr_expiry') else None,
                     'verified_at': str(leave.get('verified_at')) if leave.get('verified_at') else None
+=======
+                    'token': leave['qr_token'],
+                    'generated_at': str(leave['qr_generated_at']) if leave['qr_generated_at'] else None,
+                    'expires_at': str(leave['qr_expiry']) if leave['qr_expiry'] else None,
+                    'verified_at': str(leave['verified_at']) if leave['verified_at'] else None
+>>>>>>> 6d065b5aa7aa103defa59ffa028e9d3d6c645949
                 }
             }
             
@@ -1598,6 +1710,7 @@ def admin_export_leaves():
         # Convert to DataFrame for easy CSV export
         df_data = []
         for leave in leaves:
+<<<<<<< HEAD
             # Safely get values with defaults
             approved_at = leave.get('approved_at')
             verified_at = leave.get('verified_at')
@@ -1608,10 +1721,13 @@ def admin_export_leaves():
             suspicious_flag = leave.get('suspicious_flag', False)
             qr_token = leave.get('qr_token', '')
             
+=======
+>>>>>>> 6d065b5aa7aa103defa59ffa028e9d3d6c645949
             df_data.append({
                 'Leave ID': leave['leave_id'],
                 'Student Name': leave['student_name'],
                 'Registration Number': leave['reg_number'],
+<<<<<<< HEAD
                 'Hostel Block': hostel_block,
                 'Room Number': room_number,
                 'Leave Type': leave['leave_type'].title() if leave.get('leave_type') else 'N/A',
@@ -1630,13 +1746,37 @@ def admin_export_leaves():
                 'Suspicious Flag': 'Yes' if suspicious_flag else 'No',
                 'QR Token': qr_token,
                 'QR Expiry': qr_expiry.strftime('%Y-%m-%d %H:%M:%S') if qr_expiry else ''
+=======
+                'Hostel Block': leave.get('hostel_block', 'N/A'),
+                'Room Number': leave.get('room_number', 'N/A'),
+                'Leave Type': leave['leave_type'].title(),
+                'From Date': leave['from_date'],
+                'To Date': leave['to_date'],
+                'From Time': leave['from_time'],
+                'To Time': leave['to_time'],
+                'Destination': leave['destination'],
+                'Reason': leave['reason'],
+                'Status': leave['status'].upper(),
+                'Proctor': leave['proctor_name'],
+                'Applied At': leave['applied_at'].strftime('%Y-%m-%d %H:%M:%S'),
+                'Approved At': leave['approved_at'].strftime('%Y-%m-%d %H:%M:%S') if leave['approved_at'] else '',
+                'Verified At': leave['verified_at'].strftime('%Y-%m-%d %H:%M:%S') if leave['verified_at'] else '',
+                'Parent Contacted': 'Yes' if leave.get('parent_contacted') else 'No',
+                'Suspicious Flag': 'Yes' if leave.get('suspicious_flag') else 'No',
+                'QR Token': leave.get('qr_token', ''),
+                'QR Expiry': leave['qr_expiry'].strftime('%Y-%m-%d %H:%M:%S') if leave['qr_expiry'] else ''
+>>>>>>> 6d065b5aa7aa103defa59ffa028e9d3d6c645949
             })
         
         df = pd.DataFrame(df_data)
         
         # Create CSV
         csv_buffer = StringIO()
+<<<<<<< HEAD
         df.to_csv(csv_buffer, index=False, encoding='utf-8')
+=======
+        df.to_csv(csv_buffer, index=False)
+>>>>>>> 6d065b5aa7aa103defa59ffa028e9d3d6c645949
         csv_content = csv_buffer.getvalue()
         csv_buffer.close()
         

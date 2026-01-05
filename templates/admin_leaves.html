@@ -1165,6 +1165,7 @@
     }
     
     // Export leaves function
+<<<<<<< HEAD
     // Export leaves function
 async function exportLeaves() {
     const exportBtn = document.querySelector('.btn-vit[onclick="exportLeaves()"]');
@@ -1289,6 +1290,88 @@ async function simpleExport() {
     
     showAlert('Simple export completed! Some columns may be missing.', 'warning');
 }
+=======
+    async function exportLeaves() {
+        const exportBtn = document.querySelector('.btn-vit[onclick="exportLeaves()"]');
+        const originalText = exportBtn.innerHTML;
+        exportBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span> Exporting...';
+        exportBtn.disabled = true;
+        
+        // Show progress modal
+        const progressModal = new bootstrap.Modal(document.getElementById('exportProgressModal'));
+        progressModal.show();
+        
+        try {
+            // Get current filter values
+            const form = document.querySelector('form[method="GET"]');
+            const formData = new FormData(form);
+            const params = new URLSearchParams();
+            
+            // Add all filter parameters
+            for (const [key, value] of formData.entries()) {
+                if (value) params.append(key, value);
+            }
+            
+            // Update progress
+            document.getElementById('exportStatus').textContent = 'Preparing data...';
+            document.getElementById('exportProgressBar').style.width = '25%';
+            
+            // Request export
+            const response = await fetch(`/admin/export/leaves?${params.toString()}`);
+            
+            if (!response.ok) {
+                throw new Error('Export failed');
+            }
+            
+            // Update progress
+            document.getElementById('exportStatus').textContent = 'Generating file...';
+            document.getElementById('exportProgressBar').style.width = '75%';
+            
+            // Get filename from Content-Disposition header or use default
+            const contentDisposition = response.headers.get('Content-Disposition');
+            let filename = `leaves_export_${new Date().toISOString().split('T')[0]}.csv`;
+            
+            if (contentDisposition) {
+                const match = contentDisposition.match(/filename="?(.+)"?/);
+                if (match) filename = match[1];
+            }
+            
+            // Update progress
+            document.getElementById('exportStatus').textContent = 'Finalizing...';
+            document.getElementById('exportProgressBar').style.width = '100%';
+            
+            // Create download link
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            window.URL.revokeObjectURL(url);
+            
+            // Hide progress modal
+            progressModal.hide();
+            
+            // Update count if available
+            const count = await response.headers.get('X-Total-Count');
+            if (count) {
+                document.getElementById('exportCount').textContent = `Exported ${count} records`;
+            }
+            
+            showAlert('Export completed successfully!', 'success');
+            
+        } catch (error) {
+            console.error('Export error:', error);
+            progressModal.hide();
+            showAlert(`Export failed: ${error.message}`, 'danger');
+        } finally {
+            exportBtn.innerHTML = originalText;
+            exportBtn.disabled = false;
+        }
+    }
+>>>>>>> 6d065b5aa7aa103defa59ffa028e9d3d6c645949
     
     // Helper function to show alerts
     function showAlert(message, type = 'info') {
