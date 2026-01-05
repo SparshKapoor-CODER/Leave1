@@ -1291,59 +1291,114 @@ def admin_leave_details(leave_id):
         connection = db.get_connection()
         
         with connection.cursor() as cursor:
-            # Get detailed leave information
+            # First, check if the admin_leave_flags table exists
             cursor.execute("""
-                SELECT 
-                    l.*,
-                    s.name as student_name,
-                    s.reg_number,
-                    s.hostel_block,
-                    s.room_number,
-                    s.phone,
-                    s.parent_phone,
-                    p.name as proctor_name,
-                    p.employee_id as proctor_id,
-                    p.email as proctor_email,
-                    p.department as proctor_dept,
-                    hs.name as supervisor_name,
-                    hs.supervisor_id,
-                    hs.hostel_block as supervisor_block,
-                    al.admin_id as flagged_by_admin,
-                    al.name as flagged_by_name,
-                    al.reason as flag_reason,
-                    al.created_at as flagged_at
-                FROM leaves l
-                JOIN students s ON l.student_reg = s.reg_number
-                JOIN proctors p ON l.proctor_id = p.employee_id
-                LEFT JOIN hostel_supervisors hs ON s.hostel_block = hs.hostel_block
-                LEFT JOIN admin_leave_flags alf ON l.leave_id = alf.leave_id
-                LEFT JOIN admins al ON alf.flagged_by = al.admin_id
-                WHERE l.leave_id = %s
-            """, (leave_id,))
+                SELECT table_name 
+                FROM information_schema.tables 
+                WHERE table_schema = %s AND table_name = 'admin_leave_flags'
+            """, (db.database,))
             
+            has_admin_leave_flags = cursor.fetchone() is not None
+            
+            # Build query based on available tables
+            if has_admin_leave_flags:
+                query = """
+                    SELECT 
+                        l.*,
+                        s.name as student_name,
+                        s.reg_number,
+                        s.hostel_block,
+                        s.room_number,
+                        s.phone,
+                        s.parent_phone,
+                        p.name as proctor_name,
+                        p.employee_id as proctor_id,
+                        p.email as proctor_email,
+                        p.department as proctor_dept,
+                        hs.name as supervisor_name,
+                        hs.supervisor_id,
+                        hs.hostel_block as supervisor_block,
+                        alf.flagged_by as flagged_by_admin,
+                        al.name as flagged_by_name,
+                        alf.reason as flag_reason,
+                        alf.created_at as flagged_at
+                    FROM leaves l
+                    JOIN students s ON l.student_reg = s.reg_number
+                    JOIN proctors p ON l.proctor_id = p.employee_id
+                    LEFT JOIN hostel_supervisors hs ON s.hostel_block = hs.hostel_block
+                    LEFT JOIN admin_leave_flags alf ON l.leave_id = alf.leave_id
+                    LEFT JOIN admins al ON alf.flagged_by = al.admin_id
+                    WHERE l.leave_id = %s
+                """
+            else:
+                query = """
+                    SELECT 
+                        l.*,
+                        s.name as student_name,
+                        s.reg_number,
+                        s.hostel_block,
+                        s.room_number,
+                        s.phone,
+                        s.parent_phone,
+                        p.name as proctor_name,
+                        p.employee_id as proctor_id,
+                        p.email as proctor_email,
+                        p.department as proctor_dept,
+                        hs.name as supervisor_name,
+                        hs.supervisor_id,
+                        hs.hostel_block as supervisor_block
+                    FROM leaves l
+                    JOIN students s ON l.student_reg = s.reg_number
+                    JOIN proctors p ON l.proctor_id = p.employee_id
+                    LEFT JOIN hostel_supervisors hs ON s.hostel_block = hs.hostel_block
+                    WHERE l.leave_id = %s
+                """
+            
+            cursor.execute(query, (leave_id,))
             leave = cursor.fetchone()
             
             if not leave:
                 return jsonify({'error': 'Leave not found'}), 404
             
-            # Get approval/verification history
+            # Check if leave_audit_log table exists
             cursor.execute("""
-                SELECT 
-                    action,
-                    performed_by,
-                    performed_by_type,
-                    timestamp,
-                    notes
-                FROM leave_audit_log
-                WHERE leave_id = %s
-                ORDER BY timestamp DESC
-            """, (leave_id,))
+                SELECT table_name 
+                FROM information_schema.tables 
+                WHERE table_schema = %s AND table_name = 'leave_audit_log'
+            """, (db.database,))
             
-            audit_logs = cursor.fetchall()
+            has_audit_log = cursor.fetchone() is not None
             
-            # Get parent contact information
+            if has_audit_log:
+                # Get approval/verification history
+                cursor.execute("""
+                    SELECT 
+                        action,
+                        performed_by,
+                        performed_by_type,
+                        timestamp,
+                        notes
+                    FROM leave_audit_log
+                    WHERE leave_id = %s
+                    ORDER BY timestamp DESC
+                """, (leave_id,))
+                audit_logs = cursor.fetchall()
+            else:
+                audit_logs = []
+            
+            # Check if parent_contacts table exists
+            cursor.execute("""
+                SELECT table_name 
+                FROM information_schema.tables 
+                WHERE table_schema = %s AND table_name = 'parent_contacts'
+            """, (db.database,))
+            
+            has_parent_contacts = cursor.fetchone() is not None
+            
             parent_contacted = leave.get('parent_contacted', False)
-            if parent_contacted:
+            parent_contact = None
+            
+            if parent_contacted and has_parent_contacts:
                 cursor.execute("""
                     SELECT 
                         contact_time,
@@ -1353,10 +1408,7 @@ def admin_leave_details(leave_id):
                     FROM parent_contacts
                     WHERE leave_id = %s
                 """, (leave_id,))
-                
                 parent_contact = cursor.fetchone()
-            else:
-                parent_contact = None
             
             # Get QR verification history
             cursor.execute("""
@@ -1368,7 +1420,6 @@ def admin_leave_details(leave_id):
                 WHERE vl.leave_id = %s
                 ORDER BY timestamp DESC
             """, (leave_id,))
-            
             verification_logs = cursor.fetchall()
             
             # Format the response
@@ -1377,40 +1428,40 @@ def admin_leave_details(leave_id):
                 'student': {
                     'name': leave['student_name'],
                     'reg_number': leave['reg_number'],
-                    'hostel_block': leave['hostel_block'],
-                    'room_number': leave['room_number'],
-                    'phone': leave['phone'],
-                    'parent_phone': leave['parent_phone']
+                    'hostel_block': leave.get('hostel_block', 'N/A'),
+                    'room_number': leave.get('room_number', 'N/A'),
+                    'phone': leave.get('phone', 'N/A'),
+                    'parent_phone': leave.get('parent_phone', 'N/A')
                 },
                 'leave_details': {
-                    'type': leave['leave_type'],
-                    'from_date': str(leave['from_date']),
-                    'to_date': str(leave['to_date']),
-                    'from_time': str(leave['from_time']),
-                    'to_time': str(leave['to_time']),
-                    'duration_days': (leave['to_date'] - leave['from_date']).days + 1,
-                    'reason': leave['reason'],
-                    'destination': leave['destination'],
+                    'type': leave.get('leave_type', 'regular'),
+                    'from_date': str(leave['from_date']) if leave.get('from_date') else 'N/A',
+                    'to_date': str(leave['to_date']) if leave.get('to_date') else 'N/A',
+                    'from_time': str(leave['from_time']) if leave.get('from_time') else 'N/A',
+                    'to_time': str(leave['to_time']) if leave.get('to_time') else 'N/A',
+                    'duration_days': (leave['to_date'] - leave['from_date']).days + 1 if leave.get('from_date') and leave.get('to_date') else 1,
+                    'reason': leave.get('reason', 'No reason provided'),
+                    'destination': leave.get('destination', 'Not specified'),
                     'parent_contacted': parent_contacted,
-                    'status': leave['status'],
-                    'applied_at': str(leave['applied_at'])
+                    'status': leave.get('status', 'pending'),
+                    'applied_at': str(leave['applied_at']) if leave.get('applied_at') else 'N/A'
                 },
                 'proctor': {
-                    'name': leave['proctor_name'],
-                    'employee_id': leave['proctor_id'],
-                    'email': leave['proctor_email'],
-                    'department': leave['proctor_dept']
+                    'name': leave.get('proctor_name', 'Unknown'),
+                    'employee_id': leave.get('proctor_id', 'N/A'),
+                    'email': leave.get('proctor_email', 'N/A'),
+                    'department': leave.get('proctor_dept', 'N/A')
                 },
                 'hostel_supervisor': {
-                    'name': leave['supervisor_name'] if leave['supervisor_name'] else 'Not Assigned',
-                    'supervisor_id': leave['supervisor_id'],
-                    'hostel_block': leave['supervisor_block']
+                    'name': leave.get('supervisor_name', 'Not Assigned'),
+                    'supervisor_id': leave.get('supervisor_id', 'N/A'),
+                    'hostel_block': leave.get('supervisor_block', 'N/A')
                 },
                 'suspicious_flag': {
-                    'is_flagged': leave['suspicious_flag'],
-                    'flagged_by': leave['flagged_by_name'] if leave['flagged_by_name'] else None,
-                    'reason': leave['flag_reason'],
-                    'flagged_at': str(leave['flagged_at']) if leave['flagged_at'] else None
+                    'is_flagged': leave.get('suspicious_flag', False),
+                    'flagged_by': leave.get('flagged_by_name') if leave.get('flagged_by_name') else None,
+                    'reason': leave.get('flag_reason') if leave.get('flag_reason') else None,
+                    'flagged_at': str(leave.get('flagged_at')) if leave.get('flagged_at') else None
                 },
                 'audit_logs': [
                     {
@@ -1433,10 +1484,10 @@ def admin_leave_details(leave_id):
                     for log in verification_logs
                 ],
                 'qr_code': {
-                    'token': leave['qr_token'],
-                    'generated_at': str(leave['qr_generated_at']) if leave['qr_generated_at'] else None,
-                    'expires_at': str(leave['qr_expiry']) if leave['qr_expiry'] else None,
-                    'verified_at': str(leave['verified_at']) if leave['verified_at'] else None
+                    'token': leave.get('qr_token'),
+                    'generated_at': str(leave.get('qr_generated_at')) if leave.get('qr_generated_at') else None,
+                    'expires_at': str(leave.get('qr_expiry')) if leave.get('qr_expiry') else None,
+                    'verified_at': str(leave.get('verified_at')) if leave.get('verified_at') else None
                 }
             }
             
@@ -1547,35 +1598,45 @@ def admin_export_leaves():
         # Convert to DataFrame for easy CSV export
         df_data = []
         for leave in leaves:
+            # Safely get values with defaults
+            approved_at = leave.get('approved_at')
+            verified_at = leave.get('verified_at')
+            qr_expiry = leave.get('qr_expiry')
+            hostel_block = leave.get('hostel_block', 'N/A')
+            room_number = leave.get('room_number', 'N/A')
+            parent_contacted = leave.get('parent_contacted', False)
+            suspicious_flag = leave.get('suspicious_flag', False)
+            qr_token = leave.get('qr_token', '')
+            
             df_data.append({
                 'Leave ID': leave['leave_id'],
                 'Student Name': leave['student_name'],
                 'Registration Number': leave['reg_number'],
-                'Hostel Block': leave.get('hostel_block', 'N/A'),
-                'Room Number': leave.get('room_number', 'N/A'),
-                'Leave Type': leave['leave_type'].title(),
-                'From Date': leave['from_date'],
-                'To Date': leave['to_date'],
-                'From Time': leave['from_time'],
-                'To Time': leave['to_time'],
-                'Destination': leave['destination'],
-                'Reason': leave['reason'],
-                'Status': leave['status'].upper(),
-                'Proctor': leave['proctor_name'],
-                'Applied At': leave['applied_at'].strftime('%Y-%m-%d %H:%M:%S'),
-                'Approved At': leave['approved_at'].strftime('%Y-%m-%d %H:%M:%S') if leave['approved_at'] else '',
-                'Verified At': leave['verified_at'].strftime('%Y-%m-%d %H:%M:%S') if leave['verified_at'] else '',
-                'Parent Contacted': 'Yes' if leave.get('parent_contacted') else 'No',
-                'Suspicious Flag': 'Yes' if leave.get('suspicious_flag') else 'No',
-                'QR Token': leave.get('qr_token', ''),
-                'QR Expiry': leave['qr_expiry'].strftime('%Y-%m-%d %H:%M:%S') if leave['qr_expiry'] else ''
+                'Hostel Block': hostel_block,
+                'Room Number': room_number,
+                'Leave Type': leave['leave_type'].title() if leave.get('leave_type') else 'N/A',
+                'From Date': str(leave['from_date']) if leave.get('from_date') else 'N/A',
+                'To Date': str(leave['to_date']) if leave.get('to_date') else 'N/A',
+                'From Time': str(leave['from_time']) if leave.get('from_time') else 'N/A',
+                'To Time': str(leave['to_time']) if leave.get('to_time') else 'N/A',
+                'Destination': leave.get('destination', 'N/A'),
+                'Reason': leave.get('reason', 'N/A'),
+                'Status': leave['status'].upper() if leave.get('status') else 'N/A',
+                'Proctor': leave.get('proctor_name', 'N/A'),
+                'Applied At': leave['applied_at'].strftime('%Y-%m-%d %H:%M:%S') if leave.get('applied_at') else 'N/A',
+                'Approved At': approved_at.strftime('%Y-%m-%d %H:%M:%S') if approved_at else '',
+                'Verified At': verified_at.strftime('%Y-%m-%d %H:%M:%S') if verified_at else '',
+                'Parent Contacted': 'Yes' if parent_contacted else 'No',
+                'Suspicious Flag': 'Yes' if suspicious_flag else 'No',
+                'QR Token': qr_token,
+                'QR Expiry': qr_expiry.strftime('%Y-%m-%d %H:%M:%S') if qr_expiry else ''
             })
         
         df = pd.DataFrame(df_data)
         
         # Create CSV
         csv_buffer = StringIO()
-        df.to_csv(csv_buffer, index=False)
+        df.to_csv(csv_buffer, index=False, encoding='utf-8')
         csv_content = csv_buffer.getvalue()
         csv_buffer.close()
         

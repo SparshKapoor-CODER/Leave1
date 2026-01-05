@@ -3,6 +3,7 @@ import pymysql
 import os
 from dotenv import load_dotenv
 import bcrypt
+import traceback
 
 # Load environment variables
 load_dotenv('.env')  # Load from DB.env file
@@ -176,14 +177,60 @@ class Database:
                     )
                 ''')
                 print("✓ Created 'admin_logs' table")
+
+                # Create admin_leave_flags table
+                cursor.execute('''
+                    CREATE TABLE IF NOT EXISTS admin_leave_flags (
+                        flag_id INT AUTO_INCREMENT PRIMARY KEY,
+                        leave_id INT NOT NULL,
+                        flagged_by VARCHAR(50) NOT NULL,
+                        reason TEXT NOT NULL,
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        FOREIGN KEY (leave_id) REFERENCES leaves(leave_id) ON DELETE CASCADE,
+                        FOREIGN KEY (flagged_by) REFERENCES admins(admin_id) ON DELETE CASCADE
+                    )
+                ''')
+                print("✓ Created 'admin_leave_flags' table")
+
+                # Create parent_contacts table
+                cursor.execute('''
+                    CREATE TABLE IF NOT EXISTS parent_contacts (
+                        contact_id INT AUTO_INCREMENT PRIMARY KEY,
+                        leave_id INT NOT NULL,
+                        contact_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        method VARCHAR(50),
+                        confirmation_code VARCHAR(100),
+                        notes TEXT,
+                        FOREIGN KEY (leave_id) REFERENCES leaves(leave_id) ON DELETE CASCADE
+                    )
+                ''')
+                print("✓ Created 'parent_contacts' table")
+
+                # Create leave_audit_log table
+                cursor.execute('''
+                    CREATE TABLE IF NOT EXISTS leave_audit_log (
+                        log_id INT AUTO_INCREMENT PRIMARY KEY,
+                        leave_id INT NOT NULL,
+                        action VARCHAR(50) NOT NULL,
+                        performed_by VARCHAR(100) NOT NULL,
+                        performed_by_type VARCHAR(50) NOT NULL,
+                        timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        notes TEXT,
+                        FOREIGN KEY (leave_id) REFERENCES leaves(leave_id) ON DELETE CASCADE
+                    )
+                ''')
+                print("✓ Created 'leave_audit_log' table")
                 
                 connection.commit()
                 print("\n" + "="*50)
                 print("ALL TABLES CREATED SUCCESSFULLY!")
+                print("✓ 10 tables: students, proctors, leaves, hostel_supervisors, admins,")
+                print("  verification_logs, admin_logs, admin_leave_flags, parent_contacts, leave_audit_log")
                 print("="*50 + "\n")
                 
         except Exception as e:
             print(f"✗ Error creating tables: {e}")
+            traceback.print_exc()
             raise
         finally:
             if connection:
