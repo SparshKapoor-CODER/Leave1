@@ -134,9 +134,9 @@ leave_management/
 │   ├── student_dashboard.html
 │   └── student_login.html
 ├── static/
-    ├── download.jpg
-    ├── File_VIT_Bhopal_logo.png
-    └── images.jpg
+│    ├── download.jpg
+│    ├── File_VIT_Bhopal_logo.png
+│    └── images.jpg
 └── __pycache__/                # Python cache files
 ```
 
