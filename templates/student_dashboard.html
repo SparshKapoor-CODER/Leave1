@@ -301,6 +301,148 @@
     </div>
 </div>
 
+<!-- Leave Details Modal -->
+<div class="modal fade" id="leaveDetailsModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header" style="background: var(--vit-blue); color: white;">
+                <h5 class="modal-title">
+                    <i class="fas fa-file-alt me-2"></i>Leave Application Details
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label class="form-label"><strong>Leave ID:</strong></label>
+                            <p class="form-control-static" id="detailLeaveId">-</p>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label"><strong>Type:</strong></label>
+                            <p class="form-control-static" id="detailType">-</p>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label"><strong>Status:</strong></label>
+                            <p class="form-control-static" id="detailStatus">-</p>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label"><strong>Applied On:</strong></label>
+                            <p class="form-control-static" id="detailAppliedAt">-</p>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label class="form-label"><strong>From:</strong></label>
+                            <p class="form-control-static" id="detailFrom">-</p>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label"><strong>To:</strong></label>
+                            <p class="form-control-static" id="detailTo">-</p>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label"><strong>Duration:</strong></label>
+                            <p class="form-control-static" id="detailDuration">-</p>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label"><strong>Parent Contacted:</strong></label>
+                            <p class="form-control-static" id="detailParentContacted">-</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="mb-3">
+                    <label class="form-label"><strong>Destination:</strong></label>
+                    <p class="form-control-static" id="detailDestination">-</p>
+                </div>
+                
+                <div class="mb-3">
+                    <label class="form-label"><strong>Reason:</strong></label>
+                    <div class="card">
+                        <div class="card-body">
+                            <p id="detailReason" class="mb-0">-</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label class="form-label"><strong>Proctor:</strong></label>
+                            <p class="form-control-static" id="detailProctor">-</p>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label class="form-label"><strong>Approved On:</strong></label>
+                            <p class="form-control-static" id="detailApprovedAt">-</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- QR Code Section (only for approved leaves) -->
+                <div class="qr-section" id="qrSection" style="display: none;">
+                    <hr>
+                    <div class="text-center mb-3">
+                        <h6><i class="fas fa-qrcode me-2"></i>QR Code Information</h6>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label"><strong>QR Token:</strong></label>
+                                <div class="input-group">
+                                    <input type="text" class="form-control" id="detailQrToken" readonly>
+                                    <button class="btn btn-outline-secondary" type="button" onclick="copyDetailQrToken()">
+                                        <i class="fas fa-copy"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label"><strong>Valid Until:</strong></label>
+                                <p class="form-control-static" id="detailQrExpiry">-</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="text-center">
+                        <button class="btn btn-success" onclick="showQRCodeFromDetails()">
+                            <i class="fas fa-qrcode me-2"></i>Show QR Code
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Verification History (if any) -->
+                <div class="verification-history" id="verificationHistory" style="display: none;">
+                    <hr>
+                    <h6><i class="fas fa-history me-2"></i>Verification History</h6>
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Date & Time</th>
+                                    <th>Action</th>
+                                    <th>Supervisor</th>
+                                    <th>Notes</th>
+                                </tr>
+                            </thead>
+                            <tbody id="verificationLogs">
+                                <!-- Will be populated by JavaScript -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-vit" onclick="printLeaveDetails()">
+                    <i class="fas fa-print me-2"></i>Print Details
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
     function showQRCode(leaveId, qrToken) {
         // Make API call to get QR code
@@ -372,8 +514,289 @@
     }
     
     function showLeaveDetails(leaveId) {
-        // You can implement a details view modal here
-        alert('Leave details for ID: ' + leaveId + '\nFeature coming soon!');
+        console.log("Fetching details for leave ID:", leaveId);
+        
+        // Make API call to get leave details
+        fetch(`/api/leave-details/${leaveId}`)
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Leave not found');
+                }
+                return response.json();
+            })
+            .then(data => {
+                console.log("Leave details received:", data);
+                populateLeaveDetails(data);
+                showLeaveDetailsModal();
+            })
+            .catch(error => {
+                console.error('Error fetching leave details:', error);
+                // Fallback: Try to get data from table row
+                const row = document.querySelector(`tr[data-leave-id="${leaveId}"]`);
+                if (row) {
+                    populateFromTableRow(row);
+                    showLeaveDetailsModal();
+                } else {
+                    alert('Error loading leave details. Please try again.\nError: ' + error.message);
+                }
+            });
+    }
+    
+    function populateLeaveDetails(data) {
+        // Basic Information
+        document.getElementById('detailLeaveId').textContent = data.leave_id || '#N/A';
+        document.getElementById('detailType').innerHTML = `<span class="badge bg-secondary">${(data.leave_type || 'regular').toUpperCase()}</span>`;
+        document.getElementById('detailStatus').innerHTML = `<span class="status-badge status-${data.status}">${(data.status || 'pending').toUpperCase()}</span>`;
+        
+        // Dates and Times
+        const fromDate = data.from_date || 'N/A';
+        const fromTime = data.from_time || 'N/A';
+        const toDate = data.to_date || 'N/A';
+        const toTime = data.to_time || 'N/A';
+        
+        document.getElementById('detailFrom').textContent = `${fromDate} ${fromTime !== 'N/A' ? 'at ' + fromTime : ''}`;
+        document.getElementById('detailTo').textContent = `${toDate} ${toTime !== 'N/A' ? 'at ' + toTime : ''}`;
+        
+        // Calculate duration
+        if (fromDate !== 'N/A' && toDate !== 'N/A') {
+            const from = new Date(fromDate);
+            const to = new Date(toDate);
+            const diffTime = Math.abs(to - from);
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+            document.getElementById('detailDuration').textContent = `${diffDays} day${diffDays > 1 ? 's' : ''}`;
+        } else {
+            document.getElementById('detailDuration').textContent = 'N/A';
+        }
+        
+        // Other Details
+        document.getElementById('detailAppliedAt').textContent = data.applied_at ? new Date(data.applied_at).toLocaleString() : 'N/A';
+        document.getElementById('detailApprovedAt').textContent = data.approved_at ? new Date(data.approved_at).toLocaleString() : 'N/A';
+        document.getElementById('detailDestination').textContent = data.destination || 'Not specified';
+        document.getElementById('detailReason').textContent = data.reason || 'No reason provided';
+        document.getElementById('detailParentContacted').textContent = data.parent_contacted ? 'Yes' : 'No';
+        document.getElementById('detailProctor').textContent = data.proctor_name || 'Not assigned';
+        
+        // QR Code Section (only for approved leaves)
+        const qrSection = document.getElementById('qrSection');
+        if (data.status === 'approved' && data.qr_token) {
+            qrSection.style.display = 'block';
+            document.getElementById('detailQrToken').value = data.qr_token || '';
+            document.getElementById('detailQrExpiry').textContent = data.qr_expiry ? new Date(data.qr_expiry).toLocaleString() : '24 hours from approval';
+        } else {
+            qrSection.style.display = 'none';
+        }
+        
+        // Store QR token for later use
+        qrSection.dataset.leaveId = data.leave_id;
+        qrSection.dataset.qrToken = data.qr_token;
+        
+        // Verification History
+        const verificationHistory = document.getElementById('verificationHistory');
+        const verificationLogs = document.getElementById('verificationLogs');
+        
+        if (data.verification_logs && data.verification_logs.length > 0) {
+            verificationHistory.style.display = 'block';
+            verificationLogs.innerHTML = '';
+            
+            data.verification_logs.forEach(log => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${log.timestamp ? new Date(log.timestamp).toLocaleString() : 'N/A'}</td>
+                    <td><span class="badge bg-info">${log.action || 'N/A'}</span></td>
+                    <td>${log.supervisor || 'N/A'}</td>
+                    <td>${log.notes || 'No notes'}</td>
+                `;
+                verificationLogs.appendChild(row);
+            });
+        } else {
+            verificationHistory.style.display = 'none';
+        }
+    }
+    
+    function populateFromTableRow(row) {
+        // Extract data from table row
+        const leaveId = row.querySelector('td:first-child strong').textContent.replace('#', '');
+        const leaveType = row.querySelector('.badge.bg-secondary').textContent.toLowerCase();
+        const status = row.classList.contains('pending') ? 'pending' : 
+                      row.classList.contains('approved') ? 'approved' : 
+                      row.classList.contains('rejected') ? 'rejected' : 'completed';
+        
+        const fromDate = row.cells[2].textContent.split('\n')[0].trim();
+        const fromTime = row.cells[2].querySelector('small').textContent;
+        const toDate = row.cells[3].textContent.split('\n')[0].trim();
+        const toTime = row.cells[3].querySelector('small').textContent;
+        const reason = row.cells[4].textContent.trim();
+        
+        // Create data object
+        const data = {
+            leave_id: leaveId,
+            leave_type: leaveType,
+            status: status,
+            from_date: fromDate,
+            from_time: fromTime,
+            to_date: toDate,
+            to_time: toTime,
+            reason: reason,
+            destination: 'Not specified in table',
+            parent_contacted: false,
+            applied_at: new Date().toISOString(),
+            proctor_name: 'Unknown'
+        };
+        
+        populateLeaveDetails(data);
+    }
+    
+    function showLeaveDetailsModal() {
+        const modal = new bootstrap.Modal(document.getElementById('leaveDetailsModal'));
+        modal.show();
+    }
+    
+    function copyDetailQrToken() {
+        const qrTokenInput = document.getElementById('detailQrToken');
+        if (qrTokenInput.value) {
+            qrTokenInput.select();
+            qrTokenInput.setSelectionRange(0, 99999);
+            document.execCommand('copy');
+            
+            // Show feedback
+            const originalValue = qrTokenInput.value;
+            qrTokenInput.value = 'Copied to clipboard!';
+            setTimeout(() => {
+                qrTokenInput.value = originalValue;
+            }, 1500);
+        }
+    }
+    
+    function showQRCodeFromDetails() {
+        const qrSection = document.getElementById('qrSection');
+        const leaveId = qrSection.dataset.leaveId;
+        const qrToken = qrSection.dataset.qrToken;
+        
+        if (leaveId && qrToken) {
+            // Close the details modal first
+            const detailsModal = bootstrap.Modal.getInstance(document.getElementById('leaveDetailsModal'));
+            if (detailsModal) detailsModal.hide();
+            
+            // Show QR code modal
+            showQRCode(parseInt(leaveId), qrToken);
+        }
+    }
+    
+    function printLeaveDetails() {
+        const printWindow = window.open('', '_blank');
+        const details = {
+            leaveId: document.getElementById('detailLeaveId').textContent,
+            type: document.getElementById('detailType').textContent,
+            status: document.getElementById('detailStatus').textContent,
+            from: document.getElementById('detailFrom').textContent,
+            to: document.getElementById('detailTo').textContent,
+            duration: document.getElementById('detailDuration').textContent,
+            appliedAt: document.getElementById('detailAppliedAt').textContent,
+            approvedAt: document.getElementById('detailApprovedAt').textContent,
+            destination: document.getElementById('detailDestination').textContent,
+            reason: document.getElementById('detailReason').textContent,
+            parentContacted: document.getElementById('detailParentContacted').textContent,
+            proctor: document.getElementById('detailProctor').textContent
+        };
+        
+        printWindow.document.write(`
+            <html>
+                <head>
+                    <title>VIT Leave Details - ${details.leaveId}</title>
+                    <style>
+                        body { font-family: Arial, sans-serif; padding: 20px; max-width: 800px; margin: 0 auto; }
+                        .header { text-align: center; border-bottom: 2px solid #003366; padding-bottom: 20px; margin-bottom: 30px; }
+                        .vip-logo { color: #003366; font-weight: bold; font-size: 24px; }
+                        .details-table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+                        .details-table th, .details-table td { padding: 12px 15px; text-align: left; border-bottom: 1px solid #ddd; }
+                        .details-table th { background-color: #f8f9fa; width: 30%; }
+                        .status-badge { padding: 5px 10px; border-radius: 15px; font-weight: bold; font-size: 0.9em; }
+                        .status-pending { background: #fff3cd; color: #856404; }
+                        .status-approved { background: #d4edda; color: #155724; }
+                        .status-rejected { background: #f8d7da; color: #721c24; }
+                        .status-completed { background: #d1ecf1; color: #0c5460; }
+                        .reason-box { background: #f8f9fa; padding: 15px; border-radius: 5px; margin: 20px 0; border-left: 4px solid #003366; }
+                        .footer { margin-top: 40px; text-align: center; color: #666; font-size: 0.9em; border-top: 1px solid #ddd; padding-top: 20px; }
+                        @media print {
+                            body { padding: 0; }
+                            .no-print { display: none; }
+                        }
+                    </style>
+                </head>
+                <body>
+                    <div class="header">
+                        <div class="vip-logo">VIT LEAVE MANAGEMENT SYSTEM</div>
+                        <h2>Leave Application Details</h2>
+                        <p>Generated on: ${new Date().toLocaleString()}</p>
+                    </div>
+                    
+                    <table class="details-table">
+                        <tr>
+                            <th>Leave ID:</th>
+                            <td>${details.leaveId}</td>
+                        </tr>
+                        <tr>
+                            <th>Type:</th>
+                            <td>${details.type}</td>
+                        </tr>
+                        <tr>
+                            <th>Status:</th>
+                            <td>${details.status}</td>
+                        </tr>
+                        <tr>
+                            <th>From:</th>
+                            <td>${details.from}</td>
+                        </tr>
+                        <tr>
+                            <th>To:</th>
+                            <td>${details.to}</td>
+                        </tr>
+                        <tr>
+                            <th>Duration:</th>
+                            <td>${details.duration}</td>
+                        </tr>
+                        <tr>
+                            <th>Applied On:</th>
+                            <td>${details.appliedAt}</td>
+                        </tr>
+                        <tr>
+                            <th>Approved On:</th>
+                            <td>${details.approvedAt}</td>
+                        </tr>
+                        <tr>
+                            <th>Destination:</th>
+                            <td>${details.destination}</td>
+                        </tr>
+                        <tr>
+                            <th>Parent Contacted:</th>
+                            <td>${details.parentContacted}</td>
+                        </tr>
+                        <tr>
+                            <th>Proctor:</th>
+                            <td>${details.proctor}</td>
+                        </tr>
+                    </table>
+                    
+                    <div class="reason-box">
+                        <h4>Reason for Leave:</h4>
+                        <p>${details.reason}</p>
+                    </div>
+                    
+                    <div class="footer">
+                        <p><strong>Vellore Institute of Technology</strong><br>
+                        Leave Management System - Official Document</p>
+                        <p class="no-print">This document was generated electronically and is valid without signature.</p>
+                    </div>
+                    
+                    <div class="no-print" style="text-align: center; margin-top: 30px;">
+                        <button onclick="window.print()" style="padding: 10px 20px; background: #003366; color: white; border: none; border-radius: 5px; cursor: pointer;">
+                            Print This Page
+                        </button>
+                    </div>
+                </body>
+            </html>
+        `);
+        printWindow.document.close();
     }
     
     function cancelLeave(leaveId) {
@@ -383,11 +806,31 @@
         }
     }
     
-    // Initialize tooltips
+    // Initialize tooltips and add data attributes to table rows
     document.addEventListener('DOMContentLoaded', function() {
+        // Initialize tooltips
         var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
         var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
             return new bootstrap.Tooltip(tooltipTriggerEl);
+        });
+        
+        // Add data-leave-id attribute to each table row
+        document.querySelectorAll('tbody tr.leave-card').forEach(row => {
+            const leaveId = row.querySelector('td:first-child strong').textContent.replace('#', '');
+            row.setAttribute('data-leave-id', leaveId);
+        });
+        
+        // Add event listener for "View Details" buttons (alternative to onclick)
+        document.querySelectorAll('.btn-info[onclick*="showLeaveDetails"]').forEach(button => {
+            const originalOnClick = button.getAttribute('onclick');
+            if (originalOnClick) {
+                // Extract leaveId from onclick string
+                const match = originalOnClick.match(/showLeaveDetails\((\d+)\)/);
+                if (match) {
+                    button.setAttribute('data-leave-id', match[1]);
+                    // Keep the original onclick for compatibility
+                }
+            }
         });
     });
 </script>
