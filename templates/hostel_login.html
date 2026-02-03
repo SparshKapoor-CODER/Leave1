@@ -1,0 +1,139 @@
+{% extends "base.html" %}
+
+{% block title %}Hostel Office Login - VIT LMS{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <div class="card card-vit login-card">
+            <div class="card-header-vit text-center">
+                <h3 class="card-title mb-0">
+                    <i class="fas fa-building me-2"></i>
+                    Hostel Office Login
+                </h3>
+                <p class="mb-0 mt-2" style="font-size: 0.9rem;">QR code verification and permission slip generation</p>
+            </div>
+            <div class="card-body">
+                {% if error %}
+                    <div class="alert alert-danger alert-vit">
+                        <i class="fas fa-exclamation-circle me-2"></i>{{ error }}
+                    </div>
+                {% endif %}
+                
+                <form method="POST" action="{{ url_for('hostel_login') }}">
+                    <div class="mb-4">
+                        <label for="supervisor_id" class="form-label required">Supervisor ID</label>
+                        <div class="input-group">
+                            <span class="input-group-text">
+                                <i class="fas fa-id-card-alt"></i>
+                            </span>
+                            <input type="text" class="form-control" id="supervisor_id" name="supervisor_id" 
+                                   placeholder="Enter your Supervisor ID" required>
+                        </div>
+                        <div class="form-text">Your hostel office identification number</div>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label for="password" class="form-label required">Password</label>
+                        <div class="input-group">
+                            <span class="input-group-text">
+                                <i class="fas fa-lock"></i>
+                            </span>
+                            <input type="password" class="form-control" id="password" name="password" 
+                                   placeholder="Enter your password" required>
+                            <button class="btn btn-outline-secondary" type="button" id="togglePassword">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="hostel_block" class="form-label required">Hostel Block</label>
+                        <select class="form-select" id="hostel_block" name="hostel_block" required>
+                            <option value="" selected disabled>Select hostel block</option>
+                            <option value="A">A Block</option>
+                            <option value="B">B Block</option>
+                            <option value="C">C Block</option>
+                            <option value="D">D Block</option>
+                            <option value="E">E Block</option>
+                            <option value="F">F Block</option>
+                            <option value="G">G Block</option>
+                            <option value="H">H Block</option>
+                        </select>
+                    </div>
+                    
+                    <div class="d-grid gap-2 mb-4">
+                        <button type="submit" class="btn btn-vit">
+                            <i class="fas fa-sign-in-alt me-2"></i>Login to Hostel Portal
+                        </button>
+                    </div>
+                    
+                    <div class="text-center">
+                        <p class="text-muted small">
+                            <i class="fas fa-qrcode me-1"></i>
+                            Login to scan QR codes and generate permission slips
+                        </p>
+                        <a href="{{ url_for('index') }}" class="btn btn-outline-secondary btn-sm">
+                            <i class="fas fa-home me-1"></i>Back to Home
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+        
+        <div class="card card-vit mt-4">
+            <div class="card-body">
+                <h5 class="card-title">
+                    <i class="fas fa-cogs me-2"></i>System Requirements
+                </h5>
+                <ul class="list-unstyled">
+                    <li class="mb-2">
+                        <i class="fas fa-check text-success me-2"></i>
+                        QR code scanner or webcam required
+                    </li>
+                    <li class="mb-2">
+                        <i class="fas fa-check text-success me-2"></i>
+                        Printer connected for permission slips
+                    </li>
+                    <li class="mb-2">
+                        <i class="fas fa-check text-success me-2"></i>
+                        Stable internet connection
+                    </li>
+                    <li>
+                        <i class="fas fa-check text-success me-2"></i>
+                        Latest browser version recommended
+                    </li>
+                </ul>
+                
+                <div class="alert alert-warning alert-vit mt-3">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    <strong>Important:</strong> Always verify student ID card along with QR code
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Toggle password visibility
+    document.getElementById('togglePassword').addEventListener('click', function() {
+        const passwordInput = document.getElementById('password');
+        const icon = this.querySelector('i');
+        
+        if (passwordInput.type === 'password') {
+            passwordInput.type = 'text';
+            icon.classList.remove('fa-eye');
+            icon.classList.add('fa-eye-slash');
+        } else {
+            passwordInput.type = 'password';
+            icon.classList.remove('fa-eye-slash');
+            icon.classList.add('fa-eye');
+        }
+    });
+    
+    // Set today's date for reference
+    const today = new Date().toISOString().split('T')[0];
+    document.getElementById('from_date').min = today;
+    document.getElementById('to_date').min = today;
+</script>
+{% endblock %}
