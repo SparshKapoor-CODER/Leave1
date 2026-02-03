@@ -1,0 +1,827 @@
+{% extends "base.html" %}
+
+{% block title %}User Management - Admin Panel{% endblock %}
+
+{% block extra_css %}
+<style>
+    .user-tabs .nav-link {
+        border-radius: 0;
+        padding: 12px 20px;
+        font-weight: 500;
+    }
+    
+    .user-tabs .nav-link.active {
+        border-bottom: 3px solid;
+        background: rgba(0,0,0,0.02);
+    }
+    
+    .user-card {
+        border: 1px solid #dee2e6;
+        border-radius: 10px;
+        padding: 20px;
+        margin-bottom: 20px;
+        transition: all 0.3s ease;
+        background: white;
+    }
+    
+    .user-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+    }
+    
+    .user-type-badge {
+        position: absolute;
+        top: -10px;
+        right: -10px;
+        padding: 5px 12px;
+        border-radius: 15px;
+        font-size: 0.75rem;
+        font-weight: bold;
+        text-transform: uppercase;
+    }
+    
+    .student-badge { background: #007bff; color: white; }
+    .proctor-badge { background: #28a745; color: white; }
+    .supervisor-badge { background: #ffc107; color: white; }
+    .admin-badge { background: #dc3545; color: white; }
+    
+    .add-user-form {
+        background: #f8f9fa;
+        border-radius: 10px;
+        padding: 25px;
+        margin-bottom: 30px;
+    }
+    
+    .form-section {
+        border-left: 4px solid #007bff;
+        padding-left: 15px;
+        margin-bottom: 25px;
+        transition: all 0.3s ease;
+    }
+    
+    .password-strength {
+        height: 5px;
+        background: #e9ecef;
+        border-radius: 3px;
+        margin-top: 5px;
+        overflow: hidden;
+    }
+    
+    .password-strength-bar {
+        height: 100%;
+        width: 0%;
+        transition: width 0.3s ease;
+        border-radius: 3px;
+    }
+    
+    .weak { background: #dc3545; width: 33%; }
+    .medium { background: #ffc107; width: 66%; }
+    .strong { background: #28a745; width: 100%; }
+    
+    .required:after {
+        content: " *";
+        color: #dc3545;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h1 class="h3 mb-0" style="color: #dc3545;">
+            <i class="fas fa-users me-2"></i>User Management
+        </h1>
+        <p class="text-muted mb-0">Total: {{ users|length }} users in system</p>
+    </div>
+    <div class="d-flex gap-2">
+        <a href="{{ url_for('admin_dashboard') }}" class="btn btn-outline-secondary">
+            <i class="fas fa-arrow-left me-2"></i>Back
+        </a>
+        <button class="btn btn-vit" data-bs-toggle="modal" data-bs-target="#bulkUploadModal">
+            <i class="fas fa-upload me-2"></i>Bulk Upload
+        </button>
+    </div>
+</div>
+
+<!-- User Type Tabs -->
+<ul class="nav nav-tabs user-tabs mb-4" id="userTypeTabs">
+    <li class="nav-item">
+        <a class="nav-link active" data-bs-toggle="tab" href="#all-users">
+            <i class="fas fa-users me-2"></i>All Users
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link" data-bs-toggle="tab" href="#students">
+            <i class="fas fa-user-graduate me-2"></i>Students
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link" data-bs-toggle="tab" href="#proctors">
+            <i class="fas fa-chalkboard-teacher me-2"></i>Proctors
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link" data-bs-toggle="tab" href="#supervisors">
+            <i class="fas fa-building me-2"></i>Supervisors
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link" data-bs-toggle="tab" href="#admins">
+            <i class="fas fa-user-shield me-2"></i>Admins
+        </a>
+    </li>
+</ul>
+
+<!-- Add User Form -->
+<div class="add-user-form">
+    <h4 class="mb-4">
+        <i class="fas fa-user-plus me-2"></i>Add New User
+    </h4>
+    
+    <!-- User Type Selection -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <label class="form-label required">User Type</label>
+            <select class="form-select" id="userTypeSelect" required onchange="showUserForm(this.value)">
+                <option value="" selected disabled>Select User Type</option>
+                <option value="student">Student</option>
+                <option value="proctor">Proctor</option>
+                <option value="supervisor">Hostel Supervisor</option>
+            </select>
+        </div>
+    </div>
+    
+    <!-- Student Form -->
+    <form method="POST" action="{{ url_for('admin_add_user') }}" id="studentForm" class="form-section" style="display: none;">
+        <input type="hidden" name="user_type" value="student">
+        <h5 class="mb-3">Student Information</h5>
+        <div class="row g-3">
+            <div class="col-md-4">
+                <label class="form-label required">Registration Number</label>
+                <input type="text" class="form-control" name="reg_number" 
+                       placeholder="e.g., 24BAI10017" pattern="[0-9]{2}[A-Z]{3}[0-9]{4,5}">
+            </div>
+            <div class="col-md-4">
+                <label class="form-label required">Full Name</label>
+                <input type="text" class="form-control" name="name" placeholder="Student's full name">
+            </div>
+            <div class="col-md-4">
+                <label class="form-label required">Proctor</label>
+                <select class="form-select" name="proctor_id" required>
+                    <option value="" selected disabled>Select Proctor</option>
+                    {% for proctor in proctors %}
+                    <option value="{{ proctor.employee_id }}">{{ proctor.name }} ({{ proctor.employee_id }})</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label required">Hostel Block</label>
+                <select class="form-select" name="hostel_block">
+                    <option value="A">A Block</option>
+                    <option value="B">B Block</option>
+                    <option value="C">C Block</option>
+                    <option value="D">D Block</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label required">Room Number</label>
+                <input type="text" class="form-control" name="room_number" placeholder="e.g., 417">
+            </div>
+            <div class="col-md-3">
+                <label class="form-label required">Phone Number</label>
+                <input type="tel" class="form-control" name="phone" pattern="[0-9]{10}" placeholder="10-digit number">
+            </div>
+            <div class="col-md-3">
+                <label class="form-label required">Parent's Phone</label>
+                <input type="tel" class="form-control" name="parent_phone" pattern="[0-9]{10}" placeholder="10-digit number">
+            </div>
+            <div class="col-md-6">
+                <label class="form-label required">Password</label>
+                <input type="password" class="form-control" name="password" id="studentPassword" 
+                       onkeyup="checkPasswordStrength(this.value, 'studentStrength')">
+                <div class="password-strength">
+                    <div class="password-strength-bar" id="studentStrength"></div>
+                </div>
+                <div class="form-text">Minimum 8 characters with letters and numbers</div>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label required">Confirm Password</label>
+                <input type="password" class="form-control" name="confirm_password">
+            </div>
+        </div>
+        <div class="mt-4">
+            <button type="submit" class="btn btn-vit">
+                <i class="fas fa-save me-2"></i>Add Student
+            </button>
+            <button type="button" class="btn btn-outline-secondary" onclick="resetForm()">
+                <i class="fas fa-redo me-2"></i>Reset
+            </button>
+        </div>
+    </form>
+    
+    <!-- Proctor Form -->
+    <form method="POST" action="{{ url_for('admin_add_user') }}" id="proctorForm" class="form-section" style="display: none;">
+        <input type="hidden" name="user_type" value="proctor">
+        <h5 class="mb-3">Proctor Information</h5>
+        <div class="row g-3">
+            <div class="col-md-4">
+                <label class="form-label required">Employee ID</label>
+                <input type="text" class="form-control" name="employee_id" placeholder="e.g., P001">
+            </div>
+            <div class="col-md-8">
+                <label class="form-label required">Full Name</label>
+                <input type="text" class="form-control" name="name" placeholder="Proctor's full name">
+            </div>
+            <div class="col-md-6">
+                <label class="form-label required">Email</label>
+                <input type="email" class="form-control" name="email" placeholder="proctor@vit.ac.in">
+            </div>
+            <div class="col-md-6">
+                <label class="form-label required">Department</label>
+                <input type="text" class="form-control" name="department" placeholder="e.g., CSE, ECE, etc.">
+            </div>
+            <div class="col-md-6">
+                <label class="form-label required">Password</label>
+                <input type="password" class="form-control" name="password" id="proctorPassword"
+                       onkeyup="checkPasswordStrength(this.value, 'proctorStrength')">
+                <div class="password-strength">
+                    <div class="password-strength-bar" id="proctorStrength"></div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label required">Confirm Password</label>
+                <input type="password" class="form-control" name="confirm_password">
+            </div>
+        </div>
+        <div class="mt-4">
+            <button type="submit" class="btn btn-vit">
+                <i class="fas fa-save me-2"></i>Add Proctor
+            </button>
+            <button type="button" class="btn btn-outline-secondary" onclick="resetForm()">
+                <i class="fas fa-redo me-2"></i>Reset
+            </button>
+        </div>
+    </form>
+    
+    <!-- Supervisor Form -->
+    <form method="POST" action="{{ url_for('admin_add_user') }}" id="supervisorForm" class="form-section" style="display: none;">
+        <input type="hidden" name="user_type" value="supervisor">
+        <h5 class="mb-3">Hostel Supervisor Information</h5>
+        <div class="row g-3">
+            <div class="col-md-4">
+                <label class="form-label required">Supervisor ID</label>
+                <input type="text" class="form-control" name="supervisor_id" placeholder="e.g., S001">
+            </div>
+            <div class="col-md-8">
+                <label class="form-label required">Full Name</label>
+                <input type="text" class="form-control" name="name" placeholder="Supervisor's full name">
+            </div>
+            <div class="col-md-6">
+                <label class="form-label required">Email</label>
+                <input type="email" class="form-control" name="email" placeholder="supervisor@vit.ac.in">
+            </div>
+            <div class="col-md-6">
+                <label class="form-label required">Hostel Block</label>
+                <select class="form-select" name="hostel_block">
+                    <option value="A">A Block</option>
+                    <option value="B">B Block</option>
+                    <option value="C">C Block</option>
+                    <option value="D">D Block</option>
+                </select>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label required">Password</label>
+                <input type="password" class="form-control" name="password" id="supervisorPassword"
+                       onkeyup="checkPasswordStrength(this.value, 'supervisorStrength')">
+                <div class="password-strength">
+                    <div class="password-strength-bar" id="supervisorStrength"></div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label required">Confirm Password</label>
+                <input type="password" class="form-control" name="confirm_password">
+            </div>
+        </div>
+        <div class="mt-4">
+            <button type="submit" class="btn btn-vit">
+                <i class="fas fa-save me-2"></i>Add Supervisor
+            </button>
+            <button type="button" class="btn btn-outline-secondary" onclick="resetForm()">
+                <i class="fas fa-redo me-2"></i>Reset
+            </button>
+        </div>
+    </form>
+</div>
+
+<!-- Rest of the HTML remains the same as before -->
+<!-- Users Display -->
+<div class="tab-content">
+    <!-- All Users Tab -->
+    <div class="tab-pane fade show active" id="all-users">
+        <div class="row">
+            {% for user in users %}
+            <div class="col-md-6 col-lg-4">
+                <div class="user-card position-relative">
+                    <span class="user-type-badge {{ user.type }}-badge">
+                        {{ user.type|upper }}
+                    </span>
+                    
+                    <div class="d-flex align-items-center mb-3">
+                        <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center" 
+                             style="width: 60px; height: 60px; font-size: 24px;">
+                            {% if user.type == 'student' %}
+                                <i class="fas fa-user-graduate"></i>
+                            {% elif user.type == 'proctor' %}
+                                <i class="fas fa-chalkboard-teacher"></i>
+                            {% elif user.type == 'supervisor' %}
+                                <i class="fas fa-building"></i>
+                            {% else %}
+                                <i class="fas fa-user-shield"></i>
+                            {% endif %}
+                        </div>
+                        <div class="ms-3">
+                            <h5 class="mb-1">{{ user.name }}</h5>
+                            <p class="text-muted mb-0 small">{{ user.id }}</p>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <p class="mb-1 small">
+                            <i class="fas fa-tag me-2"></i>
+                            <strong>Role:</strong> {{ user.role }}
+                        </p>
+                        {% if user.location %}
+                        <p class="mb-0 small">
+                            <i class="fas fa-map-marker-alt me-2"></i>
+                            <strong>Location:</strong> {{ user.location }}
+                        </p>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="d-flex gap-2">
+                        <button class="btn btn-sm btn-outline-primary" onclick="resetUserPassword('{{ user.type }}', '{{ user.id }}')">
+                            <i class="fas fa-key"></i>
+                        </button>
+                        <button class="btn btn-sm btn-outline-info" onclick="editUser('{{ user.type }}', '{{ user.id }}')">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        {% if user.type != 'admin' or user.id != 'ADMIN001' %}
+                        <button class="btn btn-sm btn-outline-danger" onclick="deleteUser('{{ user.type }}', '{{ user.id }}', '{{ user.name }}')">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    
+    <!-- Students Tab -->
+    <div class="tab-pane fade" id="students">
+        <div class="card card-vit">
+            <div class="card-body">
+                <h5 class="card-title mb-4">
+                    <i class="fas fa-user-graduate me-2"></i>All Students
+                </h5>
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Reg No</th>
+                                <th>Name</th>
+                                <th>Proctor</th>
+                                <th>Hostel</th>
+                                <th>Room</th>
+                                <th>Phone</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for user in users if user.type == 'student' %}
+                            <tr>
+                                <td><code>{{ user.id }}</code></td>
+                                <td>{{ user.name }}</td>
+                                <td>{{ user.proctor_name if user.proctor_name else user.location }}</td>
+                                <td>{{ user.hostel_block if user.hostel_block else 'N/A' }}</td>
+                                <td>{{ user.room_number if user.room_number else 'N/A' }}</td>
+                                <td>{{ user.phone if user.phone else 'N/A' }}</td>
+                                <td>
+                                    <button class="btn btn-sm btn-outline-primary" onclick="resetUserPassword('student', '{{ user.id }}')">
+                                        <i class="fas fa-key"></i>
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-info" onclick="editUser('student', '{{ user.id }}')">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-danger" onclick="deleteUser('student', '{{ user.id }}', '{{ user.name }}')">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="7" class="text-center text-muted">No students found</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Proctors Tab -->
+    <div class="tab-pane fade" id="proctors">
+        <div class="card card-vit">
+            <div class="card-body">
+                <h5 class="card-title mb-4">
+                    <i class="fas fa-chalkboard-teacher me-2"></i>All Proctors
+                </h5>
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Employee ID</th>
+                                <th>Name</th>
+                                <th>Email</th>
+                                <th>Department</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for user in users if user.type == 'proctor' %}
+                            <tr>
+                                <td><code>{{ user.id }}</code></td>
+                                <td>{{ user.name }}</td>
+                                <td>{{ user.email if user.email else 'N/A' }}</td>
+                                <td>{{ user.department if user.department else 'N/A' }}</td>
+                                <td>
+                                    <button class="btn btn-sm btn-outline-primary" onclick="resetUserPassword('proctor', '{{ user.id }}')">
+                                        <i class="fas fa-key"></i>
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-info" onclick="editUser('proctor', '{{ user.id }}')">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-danger" onclick="deleteUser('proctor', '{{ user.id }}', '{{ user.name }}')">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="5" class="text-center text-muted">No proctors found</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Supervisors Tab -->
+    <div class="tab-pane fade" id="supervisors">
+        <div class="card card-vit">
+            <div class="card-body">
+                <h5 class="card-title mb-4">
+                    <i class="fas fa-building me-2"></i>All Hostel Supervisors
+                </h5>
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Supervisor ID</th>
+                                <th>Name</th>
+                                <th>Email</th>
+                                <th>Hostel Block</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for user in users if user.type == 'supervisor' %}
+                            <tr>
+                                <td><code>{{ user.id }}</code></td>
+                                <td>{{ user.name }}</td>
+                                <td>{{ user.email if user.email else 'N/A' }}</td>
+                                <td>{{ user.hostel_block if user.hostel_block else 'N/A' }}</td>
+                                <td>
+                                    <button class="btn btn-sm btn-outline-primary" onclick="resetUserPassword('supervisor', '{{ user.id }}')">
+                                        <i class="fas fa-key"></i>
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-info" onclick="editUser('supervisor', '{{ user.id }}')">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-danger" onclick="deleteUser('supervisor', '{{ user.id }}', '{{ user.name }}')">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="5" class="text-center text-muted">No supervisors found</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modals remain the same -->
+<!-- Reset Password Modal -->
+<div class="modal fade" id="resetPasswordModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-warning">
+                <h5 class="modal-title">
+                    <i class="fas fa-key me-2"></i>Reset Password
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" action="{{ url_for('admin_reset_password') }}">
+                <input type="hidden" name="user_type" id="resetUserType">
+                <input type="hidden" name="user_id" id="resetUserId">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="newPassword" class="form-label">New Password</label>
+                        <input type="password" class="form-control" name="new_password" id="newPassword" required>
+                        <div class="password-strength mt-2">
+                            <div class="password-strength-bar" id="resetPasswordStrength"></div>
+                        </div>
+                        <div class="form-text">Enter new password for <strong id="resetUserName"></strong></div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="confirmNewPassword" class="form-label">Confirm New Password</label>
+                        <input type="password" class="form-control" id="confirmNewPassword" required>
+                    </div>
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>
+                        Password will be reset immediately. User will need to use this new password to login.
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-warning">Reset Password</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Delete User Modal -->
+<div class="modal fade" id="deleteUserModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title">
+                    <i class="fas fa-exclamation-triangle me-2"></i>Delete User
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" action="{{ url_for('admin_delete_user') }}">
+                <input type="hidden" name="user_type" id="deleteUserType">
+                <input type="hidden" name="user_id" id="deleteUserId">
+                <div class="modal-body">
+                    <div class="alert alert-danger">
+                        <i class="fas fa-exclamation-circle me-2"></i>
+                        <strong>Warning:</strong> This action cannot be undone!
+                    </div>
+                    <p>Are you sure you want to delete user <strong id="deleteUserName"></strong>?</p>
+                    <div class="mb-3">
+                        <label for="deleteReason" class="form-label">Reason for deletion</label>
+                        <textarea class="form-control" id="deleteReason" name="reason" rows="3" required></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-danger">Delete User</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    let currentUserType = '';
+    let currentUserId = '';
+    let currentUserName = '';
+    
+    // Initialize the form on page load
+    document.addEventListener('DOMContentLoaded', function() {
+        showUserForm('student');
+    });
+    
+    function showUserForm(userType) {
+        // Hide all forms
+        document.getElementById('studentForm').style.display = 'none';
+        document.getElementById('proctorForm').style.display = 'none';
+        document.getElementById('supervisorForm').style.display = 'none';
+        
+        // Show the selected form
+        if (userType === 'student') {
+            document.getElementById('studentForm').style.display = 'block';
+        } else if (userType === 'proctor') {
+            document.getElementById('proctorForm').style.display = 'block';
+        } else if (userType === 'supervisor') {
+            document.getElementById('supervisorForm').style.display = 'block';
+        }
+    }
+    
+    function resetForm() {
+        // Reset all forms
+        document.getElementById('studentForm').reset();
+        document.getElementById('proctorForm').reset();
+        document.getElementById('supervisorForm').reset();
+        
+        // Show student form by default
+        showUserForm('student');
+        document.getElementById('userTypeSelect').value = 'student';
+        
+        // Reset password strength bars
+        document.getElementById('studentStrength').style.width = '0%';
+        document.getElementById('proctorStrength').style.width = '0%';
+        document.getElementById('supervisorStrength').style.width = '0%';
+    }
+    
+    function checkPasswordStrength(password, elementId) {
+        const strengthBar = document.getElementById(elementId);
+        let strength = 0;
+        
+        if (password.length >= 8) strength++;
+        if (/[A-Z]/.test(password)) strength++;
+        if (/[0-9]/.test(password)) strength++;
+        if (/[^A-Za-z0-9]/.test(password)) strength++;
+        
+        strengthBar.className = 'password-strength-bar';
+        if (password.length === 0) {
+            strengthBar.style.width = '0%';
+        } else if (strength <= 1) {
+            strengthBar.style.width = '33%';
+            strengthBar.classList.add('weak');
+        } else if (strength <= 2) {
+            strengthBar.style.width = '66%';
+            strengthBar.classList.add('medium');
+        } else {
+            strengthBar.style.width = '100%';
+            strengthBar.classList.add('strong');
+        }
+    }
+    
+    function resetUserPassword(userType, userId) {
+        currentUserType = userType;
+        currentUserId = userId;
+        
+        // Find user name from the user card
+        const userCards = document.querySelectorAll('.user-card');
+        for (const card of userCards) {
+            const userIdElement = card.querySelector('.text-muted.small');
+            if (userIdElement && userIdElement.textContent.trim() === userId) {
+                const userNameElement = card.querySelector('h5');
+                currentUserName = userNameElement ? userNameElement.textContent.trim() : userId;
+                break;
+            }
+        }
+        
+        document.getElementById('resetUserType').value = userType;
+        document.getElementById('resetUserId').value = userId;
+        document.getElementById('resetUserName').textContent = currentUserName || userId;
+        
+        // Reset the modal form
+        document.getElementById('newPassword').value = '';
+        document.getElementById('confirmNewPassword').value = '';
+        document.getElementById('resetPasswordStrength').style.width = '0%';
+        
+        const modal = new bootstrap.Modal(document.getElementById('resetPasswordModal'));
+        modal.show();
+    }
+    
+    function editUser(userType, userId) {
+        alert(`Edit ${userType}: ${userId}\nThis feature will be implemented soon!`);
+        // In production, this would open an edit form with pre-filled data
+    }
+    
+    function deleteUser(userType, userId, userName) {
+        currentUserType = userType;
+        currentUserId = userId;
+        currentUserName = userName;
+        
+        document.getElementById('deleteUserType').value = userType;
+        document.getElementById('deleteUserId').value = userId;
+        document.getElementById('deleteUserName').textContent = userName;
+        
+        // Reset the reason field
+        document.getElementById('deleteReason').value = '';
+        
+        const modal = new bootstrap.Modal(document.getElementById('deleteUserModal'));
+        modal.show();
+    }
+    
+    // Form validation for student form
+    document.getElementById('studentForm').addEventListener('submit', function(e) {
+        const password = document.querySelector('#studentForm [name="password"]').value;
+        const confirmPassword = document.querySelector('#studentForm [name="confirm_password"]').value;
+        
+        if (password !== confirmPassword) {
+            e.preventDefault();
+            alert('Passwords do not match!');
+            return false;
+        }
+        
+        if (password.length < 8) {
+            e.preventDefault();
+            alert('Password must be at least 8 characters long!');
+            return false;
+        }
+        
+        return true;
+    });
+    
+    // Form validation for proctor form
+    document.getElementById('proctorForm').addEventListener('submit', function(e) {
+        const password = document.querySelector('#proctorForm [name="password"]').value;
+        const confirmPassword = document.querySelector('#proctorForm [name="confirm_password"]').value;
+        
+        if (password !== confirmPassword) {
+            e.preventDefault();
+            alert('Passwords do not match!');
+            return false;
+        }
+        
+        if (password.length < 8) {
+            e.preventDefault();
+            alert('Password must be at least 8 characters long!');
+            return false;
+        }
+        
+        return true;
+    });
+    
+    // Form validation for supervisor form
+    document.getElementById('supervisorForm').addEventListener('submit', function(e) {
+        const password = document.querySelector('#supervisorForm [name="password"]').value;
+        const confirmPassword = document.querySelector('#supervisorForm [name="confirm_password"]').value;
+        
+        if (password !== confirmPassword) {
+            e.preventDefault();
+            alert('Passwords do not match!');
+            return false;
+        }
+        
+        if (password.length < 8) {
+            e.preventDefault();
+            alert('Password must be at least 8 characters long!');
+            return false;
+        }
+        
+        return true;
+    });
+    
+    // Validate reset password modal form
+    const resetPasswordForm = document.querySelector('#resetPasswordModal form');
+    if (resetPasswordForm) {
+        resetPasswordForm.addEventListener('submit', function(e) {
+            const password = document.getElementById('newPassword').value;
+            const confirmPassword = document.getElementById('confirmNewPassword').value;
+            
+            if (password !== confirmPassword) {
+                e.preventDefault();
+                alert('Passwords do not match!');
+                return false;
+            }
+            
+            if (password.length < 8) {
+                e.preventDefault();
+                alert('Password must be at least 8 characters long!');
+                return false;
+            }
+            
+            return true;
+        });
+    }
+    
+    // Password generator function
+    function generatePassword(fieldId, strengthBarId) {
+        const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*';
+        let password = '';
+        for (let i = 0; i < 12; i++) {
+            password += chars.charAt(Math.floor(Math.random() * chars.length));
+        }
+        
+        const passwordField = document.getElementById(fieldId);
+        if (passwordField) {
+            passwordField.value = password;
+            passwordField.type = 'text';
+            
+            // Show password for 2 seconds then hide
+            setTimeout(() => {
+                passwordField.type = 'password';
+            }, 2000);
+            
+            // Trigger strength check
+            checkPasswordStrength(password, strengthBarId);
+        }
+    }
+</script>
+{% endblock %}
