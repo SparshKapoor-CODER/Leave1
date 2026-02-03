@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+
+{% block title %}Student Login - VIT LMS{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <div class="card card-vit login-card">
+            <div class="card-header-vit text-center">
+                <h3 class="card-title mb-0">
+                    <i class="fas fa-user-graduate me-2"></i>
+                    Student Login
+                </h3>
+                <p class="mb-0 mt-2" style="font-size: 0.9rem;">Access your leave management portal</p>
+            </div>
+            <div class="card-body">
+                {% if error %}
+                    <div class="alert alert-danger alert-vit">
+                        <i class="fas fa-exclamation-circle me-2"></i>{{ error }}
+                    </div>
+                {% endif %}
+                
+                <form method="POST" action="{{ url_for('student_login') }}">
+                    <div class="mb-4">
+                        <label for="reg_number" class="form-label required">Registration Number</label>
+                        <div class="input-group">
+                            <span class="input-group-text">
+                                <i class="fas fa-id-card"></i>
+                            </span>
+                            <input type="text" class="form-control" id="reg_number" name="reg_number" 
+                                   placeholder="Enter your VIT Registration Number" required
+                                   pattern="[0-9]{2}[A-Z]{3}[0-9]{4,5}" 
+                                   title="Format: 24BAI10017 (2 digits, 3 letters, 4-5 digits)">
+                        </div>
+                        <div class="form-text">Format: 21BCE1001, 24BAI10017, etc. (4-5 digits at the end)</div>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label for="password" class="form-label required">Password</label>
+                        <div class="input-group">
+                            <span class="input-group-text">
+                                <i class="fas fa-lock"></i>
+                            </span>
+                            <input type="password" class="form-control" id="password" name="password" 
+                                   placeholder="Enter your password" required>
+                            <button class="btn btn-outline-secondary" type="button" id="togglePassword">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="d-grid gap-2 mb-4">
+                        <button type="submit" class="btn btn-vit">
+                            <i class="fas fa-sign-in-alt me-2"></i>Login
+                        </button>
+                    </div>
+                    
+                    <div class="text-center">
+                        <p class="text-muted">
+                            <i class="fas fa-info-circle me-1"></i>
+                            Use your VTOP credentials to login
+                        </p>
+                        <a href="{{ url_for('index') }}" class="btn btn-outline-secondary btn-sm">
+                            <i class="fas fa-home me-1"></i>Back to Home
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+        
+        <div class="card card-vit mt-4">
+            <div class="card-body">
+                <h5 class="card-title">
+                    <i class="fas fa-question-circle me-2"></i>Need Help?
+                </h5>
+                <ul class="list-unstyled">
+                    <li class="mb-2">
+                        <i class="fas fa-key text-primary me-2"></i>
+                        Forgot password? Contact your proctor for reset
+                    </li>
+                    <li class="mb-2">
+                        <i class="fas fa-user-plus text-success me-2"></i>
+                        New student? You'll be registered by your proctor
+                    </li>
+                    <li>
+                        <i class="fas fa-phone-alt text-danger me-2"></i>
+                        Technical issues? Contact: lms-support@vit.ac.in
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Toggle password visibility
+    document.getElementById('togglePassword').addEventListener('click', function() {
+        const passwordInput = document.getElementById('password');
+        const icon = this.querySelector('i');
+        
+        if (passwordInput.type === 'password') {
+            passwordInput.type = 'text';
+            icon.classList.remove('fa-eye');
+            icon.classList.add('fa-eye-slash');
+        } else {
+            passwordInput.type = 'password';
+            icon.classList.remove('fa-eye-slash');
+            icon.classList.add('fa-eye');
+        }
+    });
+    
+    // Format registration number as user types
+    document.getElementById('reg_number').addEventListener('input', function(e) {
+        let value = e.target.value.toUpperCase();
+        value = value.replace(/[^A-Z0-9]/g, '');
+        e.target.value = value;
+    });
+</script>
+{% endblock %}
