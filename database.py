@@ -43,7 +43,7 @@ class Database:
             print(f"✗ Database connection failed: {e}")
             print("\nTroubleshooting:")
             print("1. Check if MySQL service is running")
-            print("2. Verify password in DB.env file")
+            print("2. Verify password in .env file")
             print("3. Try connecting with: mysql -u root -p")
             raise
     
