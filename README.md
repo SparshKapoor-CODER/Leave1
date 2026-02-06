@@ -1,3 +1,5 @@
+[![Python](https://img.shields.io/badge/Python-3.11%20%7C%203.12-blue.svg)](https://www.python.org/)
+
 # VIT Leave Management System
 
 A comprehensive web-based leave management system for VIT (Vellore Institute of Technology) that enables students to apply for leaves, proctors to approve them, and hostel supervisors to verify leaves using QR codes.
