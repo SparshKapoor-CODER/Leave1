@@ -395,19 +395,25 @@ def admin_login():
     
     return render_template('admin_login.html')
 
-@app.route('/admin/dashboard')
 @admin_required
 def admin_dashboard():
-    stats = AdminModel.get_system_stats()
-    recent_logs = AdminModel.get_all_logs(limit=20)
-    suspicious_leaves = AdminModel.get_all_leaves({'suspicious_only': True})
-    
-    return render_template('admin_dashboard.html',
-                         stats=stats,
-                         recent_logs=recent_logs,
-                         suspicious_leaves=suspicious_leaves,
-                         admin_name=session['admin_name'],
-                         admin_role=session['admin_role'])
+    try:
+        stats = AdminModel.get_system_stats()
+        recent_logs = AdminModel.get_all_logs(limit=20)
+        suspicious_leaves = AdminModel.get_all_leaves({'suspicious_only': True})
+        
+        return render_template('admin_dashboard.html',
+                            stats=stats,
+                            recent_logs=recent_logs,
+                            suspicious_leaves=suspicious_leaves,
+                            admin_name=session['admin_name'],
+                            admin_role=session['admin_role'])
+    except Exception as e:
+        print(f"Admin dashboard error: {e}")
+        # Return simple dashboard without complex queries
+        return render_template('admin_simple_dashboard.html',
+                            error=str(e),
+                            admin_name=session['admin_name'])
 
 @app.route('/admin/leaves')
 @admin_required
