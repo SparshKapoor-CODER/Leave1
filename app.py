@@ -608,9 +608,28 @@ def hostel_verify():
         print(f"Verifying QR token: {qr_token}")
         
         try:
-            leave, message = HostelSupervisor.verify_qr_token(qr_token, session['supervisor_id'])
+            # Get supervisor's block from session
+            supervisor_block = session.get('hostel_block', '')
+            
+            leave, message = HostelSupervisor.verify_qr_token(
+                qr_token, 
+                session['supervisor_id'],
+                supervisor_block  # Pass supervisor's block for verification
+            )
             
             if leave:
+                # Additional verification: Check if student's block matches supervisor's block
+                student_block = leave.get('hostel_block', '')
+                
+                if student_block.upper() != supervisor_block.upper():
+                    error = f"Access denied! You can only verify students from Block {supervisor_block}. This student is from Block {student_block}."
+                    flash(error, 'error')
+                    return render_template('hostel_verify.html',
+                                         supervisor_name=session.get('supervisor_name', ''),
+                                         hostel_block=session.get('hostel_block', ''),
+                                         error=error)
+                
+                # Rest of the code remains the same...
                 def format_time(time_obj):
                     if isinstance(time_obj, time):
                         return time_obj.strftime('%H:%M')
