@@ -4,19 +4,33 @@ import os
 from dotenv import load_dotenv
 import bcrypt
 import traceback
+from urllib.parse import urlparse
 
-# Load environment variables
-load_dotenv('.env')  # Load from DB.env file
+# Load environment variables for local development
+load_dotenv('.env')
 
 class Database:
     def __init__(self):
-        self.host = os.getenv('DB_HOST', 'localhost')
-        self.user = os.getenv('DB_USER', 'root')
-        self.password = os.getenv('DB_PASSWORD', '')
-        self.database = os.getenv('DB_NAME', 'vit_leave_management')
-        self.port = int(os.getenv('DB_PORT', 3306))
+        # Try to get MYSQL_URL from Railway first
+        mysql_url = os.getenv('MYSQL_URL')
         
-        # Debug: Show connection details
+        if mysql_url:
+            # Parse the MySQL URL from Railway
+            parsed = urlparse(mysql_url)
+            self.host = parsed.hostname
+            self.user = parsed.username
+            self.password = parsed.password
+            self.database = parsed.path[1:] if parsed.path else 'railway'
+            self.port = parsed.port or 3306
+        else:
+            # Fallback to individual variables (for local development)
+            self.host = os.getenv('DB_HOST', 'localhost')
+            self.user = os.getenv('DB_USER', 'root')
+            self.password = os.getenv('DB_PASSWORD', '')
+            self.database = os.getenv('DB_NAME', 'vit_leave_management')
+            self.port = int(os.getenv('DB_PORT', 3306))
+        
+        # Debug: Show connection details (mask password)
         print("\n" + "="*50)
         print("DATABASE CONNECTION DETAILS:")
         print(f"Host: {self.host}")
@@ -35,16 +49,17 @@ class Database:
                 database=self.database,
                 port=self.port,
                 cursorclass=pymysql.cursors.DictCursor,
-                charset='utf8mb4'
+                charset='utf8mb4',
+                connect_timeout=10
             )
             print("✓ Database connection successful!")
             return connection
         except pymysql.err.OperationalError as e:
             print(f"✗ Database connection failed: {e}")
-            print("\nTroubleshooting:")
-            print("1. Check if MySQL service is running")
-            print("2. Verify password in DB.env file")
-            print("3. Try connecting with: mysql -u root -p")
+            print(f"\nTroubleshooting:")
+            print(f"1. Check if MySQL service is running in Railway")
+            print(f"2. MYSQL_URL variable: {os.getenv('MYSQL_URL', 'Not set')}")
+            print(f"3. Trying to connect to: {self.host}:{self.port}")
             raise
     
     @staticmethod
@@ -54,7 +69,6 @@ class Database:
     @staticmethod
     def check_password(hashed_password, password):
         try:
-            # FIXED: bcrypt.checkpw expects (password_to_check, hashed_password)
             return bcrypt.checkpw(password.encode('utf-8'), hashed_password.encode('utf-8'))
         except Exception as e:
             print(f"Password check error: {e}")
@@ -65,9 +79,8 @@ class Database:
         try:
             connection = self.get_connection()
             with connection.cursor() as cursor:
-                # Create database if not exists
-                cursor.execute(f"CREATE DATABASE IF NOT EXISTS {self.database}")
-                cursor.execute(f"USE {self.database}")
+                # Don't create database - use the one provided by Railway
+                # Just create tables if they don't exist
                 
                 # Create students table
                 cursor.execute('''
@@ -82,7 +95,7 @@ class Database:
                         parent_phone VARCHAR(15)
                     )
                 ''')
-                print("✓ Created 'students' table")
+                print("✓ Created/Verified 'students' table")
                 
                 # Create proctors table
                 cursor.execute('''
@@ -94,9 +107,9 @@ class Database:
                         department VARCHAR(100)
                     )
                 ''')
-                print("✓ Created 'proctors' table")
+                print("✓ Created/Verified 'proctors' table")
                 
-                # Create leaves table
+                # Create leaves table (simplified for Railway)
                 cursor.execute('''
                     CREATE TABLE IF NOT EXISTS leaves (
                         leave_id INT AUTO_INCREMENT PRIMARY KEY,
@@ -113,16 +126,13 @@ class Database:
                         status ENUM('pending', 'approved', 'rejected', 'completed') DEFAULT 'pending',
                         applied_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                         approved_at TIMESTAMP NULL,
-                        qr_token VARCHAR(100) UNIQUE,
+                        qr_token VARCHAR(100),
                         qr_expiry TIMESTAMP NULL,
                         verification_count INT DEFAULT 0,
-                        suspicious_flag BOOLEAN DEFAULT FALSE,
-                        flagged_by VARCHAR(50),
-                        flag_reason TEXT,
-                        flagged_at TIMESTAMP NULL
+                        suspicious_flag BOOLEAN DEFAULT FALSE
                     )
                 ''')
-                print("✓ Created 'leaves' table")
+                print("✓ Created/Verified 'leaves' table")
                 
                 # Create hostel_supervisors table
                 cursor.execute('''
@@ -134,7 +144,7 @@ class Database:
                         email VARCHAR(100)
                     )
                 ''')
-                print("✓ Created 'hostel_supervisors' table")
+                print("✓ Created/Verified 'hostel_supervisors' table")
 
                 # Create admins table
                 cursor.execute('''
@@ -147,7 +157,7 @@ class Database:
                         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                     )
                 ''')
-                print("✓ Created 'admins' table")
+                print("✓ Created/Verified 'admins' table")
 
                 # Create verification_logs table
                 cursor.execute('''
@@ -160,79 +170,19 @@ class Database:
                         notes TEXT
                     )
                 ''')
-                print("✓ Created 'verification_logs' table")
+                print("✓ Created/Verified 'verification_logs' table")
 
-                # Create admin_logs table
-                cursor.execute('''
-                    CREATE TABLE IF NOT EXISTS admin_logs (
-                        log_id INT AUTO_INCREMENT PRIMARY KEY,
-                        admin_id VARCHAR(20) NOT NULL,
-                        action_type VARCHAR(50) NOT NULL,
-                        target_type VARCHAR(50) NOT NULL,
-                        target_id VARCHAR(50),
-                        details TEXT,
-                        ip_address VARCHAR(45),
-                        user_agent TEXT,
-                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                    )
-                ''')
-                print("✓ Created 'admin_logs' table")
-
-                # Create admin_leave_flags table
-                cursor.execute('''
-                    CREATE TABLE IF NOT EXISTS admin_leave_flags (
-                        flag_id INT AUTO_INCREMENT PRIMARY KEY,
-                        leave_id INT NOT NULL,
-                        flagged_by VARCHAR(50) NOT NULL,
-                        reason TEXT NOT NULL,
-                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                        FOREIGN KEY (leave_id) REFERENCES leaves(leave_id) ON DELETE CASCADE,
-                        FOREIGN KEY (flagged_by) REFERENCES admins(admin_id) ON DELETE CASCADE
-                    )
-                ''')
-                print("✓ Created 'admin_leave_flags' table")
-
-                # Create parent_contacts table
-                cursor.execute('''
-                    CREATE TABLE IF NOT EXISTS parent_contacts (
-                        contact_id INT AUTO_INCREMENT PRIMARY KEY,
-                        leave_id INT NOT NULL,
-                        contact_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                        method VARCHAR(50),
-                        confirmation_code VARCHAR(100),
-                        notes TEXT,
-                        FOREIGN KEY (leave_id) REFERENCES leaves(leave_id) ON DELETE CASCADE
-                    )
-                ''')
-                print("✓ Created 'parent_contacts' table")
-
-                # Create leave_audit_log table
-                cursor.execute('''
-                    CREATE TABLE IF NOT EXISTS leave_audit_log (
-                        log_id INT AUTO_INCREMENT PRIMARY KEY,
-                        leave_id INT NOT NULL,
-                        action VARCHAR(50) NOT NULL,
-                        performed_by VARCHAR(100) NOT NULL,
-                        performed_by_type VARCHAR(50) NOT NULL,
-                        timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                        notes TEXT,
-                        FOREIGN KEY (leave_id) REFERENCES leaves(leave_id) ON DELETE CASCADE
-                    )
-                ''')
-                print("✓ Created 'leave_audit_log' table")
-                
                 connection.commit()
                 print("\n" + "="*50)
-                print("ALL TABLES CREATED SUCCESSFULLY!")
-                print("✓ 10 tables: students, proctors, leaves, hostel_supervisors, admins,")
-                print("  verification_logs, admin_logs, admin_leave_flags, parent_contacts, leave_audit_log")
+                print("ALL TABLES CREATED/VERIFIED SUCCESSFULLY!")
+                print("✓ 6 essential tables created")
                 print("="*50 + "\n")
                 
         except Exception as e:
             print(f"✗ Error creating tables: {e}")
             traceback.print_exc()
-            raise
+            # Don't raise here - let the app continue without tables
+            print("⚠ Continuing in limited mode...")
         finally:
             if connection:
                 connection.close()
-
