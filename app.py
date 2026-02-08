@@ -1797,4 +1797,8 @@ if __name__ == '__main__':
     print("  Clear Old Logs: http://localhost:5000/admin/clear-old-logs")
     print("\n" + "="*60)
     
+<<<<<<< HEAD
     app.run(debug=True, port=5000)
+=======
+    app.run(debug=True, port=5000)
+>>>>>>> 2e63df1f0f450d9840f69fb32e58b7c42ce5e21c
