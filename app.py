@@ -26,7 +26,7 @@ try:
     db.init_db()  # This only creates tables if they don't exist
     print("✓ Database initialized successfully!")
     
-    # Check if we need to add minimal admin user
+    # CREATE ADMIN USER ON FIRST DEPLOY - CRITICAL!
     connection = db.get_connection()
     try:
         with connection.cursor() as cursor:
@@ -35,21 +35,72 @@ try:
             admin_count = cursor.fetchone()['count']
             
             if admin_count == 0:
-                print("⚠ No admin found. Adding minimal admin user...")
+                print("\n" + "="*60)
+                print("⚠ NO ADMIN FOUND - CREATING DEFAULT ADMIN USER...")
+                print("="*60)
+                
                 from models import UserModel
                 admin_password = UserModel.hash_password("Admin@123")
+                
                 cursor.execute("""
                     INSERT INTO admins (admin_id, name, password_hash, email, role)
                     VALUES (%s, %s, %s, %s, %s)
                 """, ("ADMIN001", "System Administrator", admin_password, "admin@vit.ac.in", "super_admin"))
+                
                 connection.commit()
-                print("✓ Default admin created: ADMIN001 / Admin@123")
+                
+                print("\n" + "="*60)
+                print("✅ DEFAULT ADMIN CREATED SUCCESSFULLY!")
+                print("   Username: ADMIN001")
+                print("   Password: Admin@123")
+                print("="*60 + "\n")
+                
+                # Also create a proctor for testing
+                proctor_password = UserModel.hash_password("Proctor@123")
+                cursor.execute("""
+                    INSERT IGNORE INTO proctors 
+                    (employee_id, name, password_hash, email, department)
+                    VALUES (%s, %s, %s, %s, %s)
+                """, ("P001", "Rajit Nair", proctor_password, "rajit.nair@vitbhopal.ac.in", "CSE"))
+                
+                # Create a test student
+                student_password = UserModel.hash_password("Sp@rsh333")
+                cursor.execute("""
+                    INSERT IGNORE INTO students 
+                    (reg_number, name, password_hash, proctor_id, hostel_block, room_number, phone, parent_phone)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                """, ("24BAI10017", "Test Student", student_password, "P001", "A Block", "101", "9876543210", "9876543211"))
+                
+                # Create a hostel supervisor
+                supervisor_password = UserModel.hash_password("Supervisor@123")
+                cursor.execute("""
+                    INSERT IGNORE INTO hostel_supervisors 
+                    (supervisor_id, name, password_hash, hostel_block, email)
+                    VALUES (%s, %s, %s, %s, %s)
+                """, ("S001", "Mr. Kumar", supervisor_password, "A Block", "kumar@vit.ac.in"))
+                
+                connection.commit()
+                print("✅ Test users created for immediate testing!")
+                print("   Proctor: P001 / Proctor@123")
+                print("   Student: 24BAI10017 / Sp@rsh333")
+                print("   Supervisor: S001 / Supervisor@123")
+                print("="*60 + "\n")
             else:
                 print(f"✓ Found {admin_count} existing admin(s)")
                 
     except Exception as e:
-        print(f"✗ Error checking admin: {e}")
+        print(f"✗ Error creating admin/user: {e}")
         traceback.print_exc()
+        # Try one more time with simpler approach
+        try:
+            cursor.execute("""
+                INSERT IGNORE INTO admins (admin_id, name, password_hash)
+                VALUES ('ADMIN001', 'System Admin', %s)
+            """, (Database.hash_password("Admin@123"),))
+            connection.commit()
+            print("✓ Created admin with minimal fields")
+        except:
+            print("⚠ Could not create admin - manual setup required")
     finally:
         connection.close()
         
@@ -888,6 +939,71 @@ def setup_sample_data():
         flash(f'Error creating sample data: {str(e)}', 'error')
     
     return redirect(url_for('index'))
+
+@app.route('/setup/initialize-system', methods=['GET', 'POST'])
+def initialize_system():
+    """Emergency endpoint to initialize system with default users"""
+    import secrets
+    from models import UserModel
+    
+    # Add a secret token for security
+    setup_token = os.getenv('SETUP_TOKEN', secrets.token_hex(16))
+    
+    if request.method == 'POST':
+        if request.form.get('token') != setup_token:
+            return "Invalid token", 403
+        
+        db = Database()
+        connection = db.get_connection()
+        
+        try:
+            with connection.cursor() as cursor:
+                # Create admin if doesn't exist
+                cursor.execute("SELECT COUNT(*) as count FROM admins")
+                if cursor.fetchone()['count'] == 0:
+                    admin_hash = UserModel.hash_password("Admin@123")
+                    cursor.execute("""
+                        INSERT INTO admins (admin_id, name, password_hash, email, role)
+                        VALUES (%s, %s, %s, %s, %s)
+                    """, ("ADMIN001", "System Administrator", admin_hash, "admin@vit.ac.in", "super_admin"))
+                    print("✅ Admin created")
+                
+                # Create proctor if doesn't exist
+                cursor.execute("SELECT COUNT(*) as count FROM proctors")
+                if cursor.fetchone()['count'] == 0:
+                    proctor_hash = UserModel.hash_password("Proctor@123")
+                    cursor.execute("""
+                        INSERT INTO proctors (employee_id, name, password_hash, email, department)
+                        VALUES (%s, %s, %s, %s, %s)
+                    """, ("P001", "Rajit Nair", proctor_hash, "rajit.nair@vitbhopal.ac.in", "CSE"))
+                    print("✅ Proctor created")
+                
+                connection.commit()
+                return '''
+                    <h1>✅ System Initialized!</h1>
+                    <p>Default users created:</p>
+                    <ul>
+                        <li><strong>Admin:</strong> ADMIN001 / Admin@123</li>
+                        <li><strong>Proctor:</strong> P001 / Proctor@123</li>
+                    </ul>
+                    <p><a href="/admin/login">Go to Admin Login</a></p>
+                '''
+        
+        except Exception as e:
+            return f"Error: {str(e)}", 500
+        finally:
+            connection.close()
+    
+    # Show setup form
+    return f'''
+    <h1>Initialize System</h1>
+    <p>This will create default admin and proctor accounts.</p>
+    <form method="POST">
+        <input type="hidden" name="token" value="{setup_token}">
+        <button type="submit">Initialize System</button>
+    </form>
+    <p><em>Token: {setup_token}</em></p>
+    '''
 
 @app.route('/admin/test-add-proctor')
 @admin_required
@@ -1825,5 +1941,7 @@ if __name__ == '__main__':
     print("  Test Add Supervisor: http://localhost:5000/admin/test-add-supervisor")
     print("  Test Log: http://localhost:5000/admin/test-log")
     print("  Clear Old Logs: http://localhost:5000/admin/clear-old-logs")
+    print("\nEmergency Setup URL:")
+    print("  Initialize System: http://localhost:5000/setup/initialize-system")
     print("\n" + "="*60)
     app.run(debug=True, port=5000)
