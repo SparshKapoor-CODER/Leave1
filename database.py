@@ -235,5 +235,4 @@ class Database:
         finally:
             if connection:
                 connection.close()
-                connection.close()
 
