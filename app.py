@@ -395,6 +395,7 @@ def admin_login():
     
     return render_template('admin_login.html')
 
+@app.route('/admin/dashboard')
 @admin_required
 def admin_dashboard():
     try:
@@ -1778,6 +1779,29 @@ def get_leave_details(leave_id):
         return jsonify({'error': str(e)}), 500
     finally:
         connection.close()
+
+import threading
+import time
+
+def database_health_check():
+    """Periodically check database connection"""
+    while True:
+        try:
+            db = Database()
+            conn = db.get_connection()
+            with conn.cursor() as cursor:
+                cursor.execute("SELECT 1")
+            conn.close()
+            print("✅ Database health check: OK")
+        except Exception as e:
+            print(f"⚠ Database health check failed: {e}")
+        
+        # Check every 5 minutes
+        time.sleep(300)
+
+# Start health check in background thread
+health_thread = threading.Thread(target=database_health_check, daemon=True)
+health_thread.start()
 
 if __name__ == '__main__':
     print("\n" + "="*60)
