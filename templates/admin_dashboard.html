@@ -134,6 +134,41 @@
     background-color: #dc3545;
     border-color: #dc3545;
 }
+
+/* Report Generation Modal Styles */
+#reportModal .modal-body {
+    padding: 20px;
+}
+
+.report-option {
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    padding: 15px;
+    margin-bottom: 10px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.report-option:hover {
+    background-color: #f8f9fa;
+    border-color: #007bff;
+    transform: translateY(-2px);
+}
+
+.report-option.selected {
+    border-color: #28a745;
+    background-color: #d4edda;
+}
+
+.report-icon {
+    font-size: 2rem;
+    margin-bottom: 10px;
+    color: #dc3545;
+}
+
+.report-details {
+    margin-top: 10px;
+}
 </style>
 {% endblock %}
 
@@ -148,7 +183,10 @@
         </p>
     </div>
     <div class="d-flex gap-2">
-        <button class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#quickActionsModal">
+        <button class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#reportModal">
+            <i class="fas fa-file-pdf me-2"></i>Generate Reports
+        </button>
+        <button class="btn btn-warning" data-bs-toggle="modal" data-bs-target="#quickActionsModal">
             <i class="fas fa-bolt me-2"></i>Quick Actions
         </button>
         <a href="{{ url_for('admin_logout') }}" class="btn btn-outline-danger">
@@ -172,8 +210,8 @@
         <a href="{{ url_for('admin_users') }}" class="nav-link">
             <i class="fas fa-users me-2"></i>User Management
         </a>
-        <a href="#reports" class="nav-link">
-            <i class="fas fa-chart-bar me-2"></i>Reports
+        <a href="{{ url_for('admin_export_leaves') }}" class="nav-link">
+            <i class="fas fa-file-export me-2"></i>Export Data
         </a>
         <a href="#settings" class="nav-link">
             <i class="fas fa-cog me-2"></i>Settings
@@ -351,6 +389,116 @@
     </div>
 </div>
 
+<!-- Report Generation Modal -->
+<div class="modal fade" id="reportModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header" style="background: #28a745; color: white;">
+                <h5 class="modal-title">
+                    <i class="fas fa-file-pdf me-2"></i>Generate Reports
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="report-option" onclick="selectReport('monthly_summary')" id="report-monthly">
+                            <div class="text-center">
+                                <i class="fas fa-chart-line report-icon"></i>
+                                <h6>Monthly Summary</h6>
+                                <small class="text-muted">Monthly leave statistics and trends</small>
+                            </div>
+                            <div class="report-details">
+                                <ul class="small">
+                                    <li>Leave trends by month</li>
+                                    <li>Approval rates</li>
+                                    <li>Most common leave types</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="report-option" onclick="selectReport('leave_statistics')" id="report-statistics">
+                            <div class="text-center">
+                                <i class="fas fa-chart-bar report-icon"></i>
+                                <h6>Leave Statistics</h6>
+                                <small class="text-muted">Detailed leave data with filters</small>
+                            </div>
+                            <div class="report-details">
+                                <ul class="small">
+                                    <li>Filter by date range</li>
+                                    <li>Status breakdown</li>
+                                    <li>Detailed leave records</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="row mt-3">
+                    <div class="col-md-6">
+                        <div class="report-option" onclick="selectReport('user_activity')" id="report-activity">
+                            <div class="text-center">
+                                <i class="fas fa-users report-icon"></i>
+                                <h6>User Activity</h6>
+                                <small class="text-muted">User engagement and activity report</small>
+                            </div>
+                            <div class="report-details">
+                                <ul class="small">
+                                    <li>User login activity</li>
+                                    <li>Action frequency</li>
+                                    <li>System usage patterns</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="report-option" onclick="selectReport('suspicious_activity')" id="report-suspicious">
+                            <div class="text-center">
+                                <i class="fas fa-exclamation-triangle report-icon"></i>
+                                <h6>Suspicious Activity</h6>
+                                <small class="text-muted">Flagged and suspicious leave patterns</small>
+                            </div>
+                            <div class="report-details">
+                                <ul class="small">
+                                    <li>All flagged leaves</li>
+                                    <li>Pattern analysis</li>
+                                    <li>Risk assessment</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="mt-4" id="reportFilters" style="display: none;">
+                    <h6>Report Filters</h6>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <label for="dateFrom" class="form-label">From Date</label>
+                            <input type="date" class="form-control" id="dateFrom">
+                        </div>
+                        <div class="col-md-6">
+                            <label for="dateTo" class="form-label">To Date</label>
+                            <input type="date" class="form-control" id="dateTo">
+                        </div>
+                    </div>
+                    <div class="mt-3" id="additionalFilters">
+                        <!-- Additional filters will be added here based on report type -->
+                    </div>
+                </div>
+                
+                <div class="mt-4 d-flex justify-content-between">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="fas fa-times me-2"></i>Cancel
+                    </button>
+                    <button type="button" class="btn btn-success" onclick="generateSelectedReport()" id="generateReportBtn" disabled>
+                        <i class="fas fa-file-download me-2"></i>Generate Report
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Quick Actions Modal -->
 <div class="modal fade" id="quickActionsModal" tabindex="-1">
     <div class="modal-dialog modal-lg">
@@ -369,29 +517,29 @@
                         </a>
                     </div>
                     <div class="col-md-4 mb-3">
-                        <button class="btn btn-success w-100" data-bs-toggle="modal" data-bs-target="#bulkUploadModal">
-                            <i class="fas fa-upload me-2"></i>Bulk Upload
+                        <button class="btn btn-success w-100" onclick="exportLeavesData()">
+                            <i class="fas fa-file-export me-2"></i>Export Leaves
                         </button>
                     </div>
                     <div class="col-md-4 mb-3">
                         <a href="{{ url_for('admin_logs') }}" class="btn btn-info w-100">
-                            <i class="fas fa-file-download me-2"></i>Export Logs
+                            <i class="fas fa-history me-2"></i>View Logs
                         </a>
                     </div>
                     <div class="col-md-4 mb-3">
-                        <button class="btn btn-warning w-100" onclick="backupDatabase()">
-                            <i class="fas fa-database me-2"></i>Backup DB
+                        <button class="btn btn-warning w-100" data-bs-toggle="modal" data-bs-target="#reportModal">
+                            <i class="fas fa-file-pdf me-2"></i>Reports
                         </button>
                     </div>
                     <div class="col-md-4 mb-3">
-                        <button class="btn btn-danger w-100" data-bs-toggle="modal" data-bs-target="#systemResetModal">
-                            <i class="fas fa-redo me-2"></i>System Reset
+                        <button class="btn btn-dark w-100" onclick="clearOldLogs()">
+                            <i class="fas fa-trash-alt me-2"></i>Clear Old Logs
                         </button>
                     </div>
                     <div class="col-md-4 mb-3">
-                        <button class="btn btn-dark w-100" onclick="generateReports()">
-                            <i class="fas fa-chart-pie me-2"></i>Generate Reports
-                        </button>
+                        <a href="{{ url_for('admin_export_leaves') }}" class="btn btn-secondary w-100">
+                            <i class="fas fa-download me-2"></i>Export CSV
+                        </a>
                     </div>
                 </div>
                 
@@ -426,8 +574,8 @@
                                 </a>
                             </li>
                             <li class="list-group-item">
-                                <a href="#">
-                                    <i class="fas fa-cog text-secondary me-2"></i>System Settings
+                                <a href="{{ url_for('admin_export_leaves') }}">
+                                    <i class="fas fa-file-csv text-secondary me-2"></i>Export Data
                                 </a>
                             </li>
                             <li class="list-group-item">
@@ -444,26 +592,197 @@
 </div>
 
 <script>
-    // Global variable to store auto-refresh state
-    let autoRefreshEnabled = localStorage.getItem('admin_auto_refresh') === 'true';
-    let refreshTimer = null;
+    let selectedReportType = null;
+    let selectedReportName = null;
 
-    // Initialize auto-refresh based on saved preference
     document.addEventListener('DOMContentLoaded', function() {
-        initializeAutoRefresh();
+        setupReportModal();
         setupEventListeners();
-        checkSystemStatus();
     });
 
-    function initializeAutoRefresh() {
-        // Update toggle button state
-        const toggleBtn = document.getElementById('autoRefreshToggle');
-        if (toggleBtn) {
-            toggleBtn.checked = autoRefreshEnabled;
+    function setupReportModal() {
+        // Initialize date fields to current month
+        const today = new Date();
+        const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
+        const lastDay = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+        
+        document.getElementById('dateFrom').value = formatDate(firstDay);
+        document.getElementById('dateTo').value = formatDate(lastDay);
+        
+        // Add event listeners to report options
+        document.querySelectorAll('.report-option').forEach(option => {
+            option.addEventListener('click', function() {
+                document.querySelectorAll('.report-option').forEach(opt => {
+                    opt.classList.remove('selected');
+                });
+                this.classList.add('selected');
+            });
+        });
+    }
+
+    function formatDate(date) {
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    }
+
+    function selectReport(reportType) {
+        selectedReportType = reportType;
+        
+        // Update button text and enable it
+        const generateBtn = document.getElementById('generateReportBtn');
+        const reportNames = {
+            'monthly_summary': 'Monthly Summary',
+            'leave_statistics': 'Leave Statistics',
+            'user_activity': 'User Activity',
+            'suspicious_activity': 'Suspicious Activity'
+        };
+        selectedReportName = reportNames[reportType];
+        
+        generateBtn.innerHTML = `<i class="fas fa-file-download me-2"></i>Generate ${selectedReportName}`;
+        generateBtn.disabled = false;
+        
+        // Show filters for certain report types
+        const filtersDiv = document.getElementById('reportFilters');
+        const additionalFilters = document.getElementById('additionalFilters');
+        
+        if (reportType === 'leave_statistics' || reportType === 'suspicious_activity') {
+            filtersDiv.style.display = 'block';
+            
+            if (reportType === 'leave_statistics') {
+                additionalFilters.innerHTML = `
+                    <div class="row">
+                        <div class="col-md-6">
+                            <label for="statusFilter" class="form-label">Status</label>
+                            <select class="form-select" id="statusFilter">
+                                <option value="">All Status</option>
+                                <option value="pending">Pending</option>
+                                <option value="approved">Approved</option>
+                                <option value="rejected">Rejected</option>
+                                <option value="completed">Completed</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="typeFilter" class="form-label">Leave Type</label>
+                            <select class="form-select" id="typeFilter">
+                                <option value="">All Types</option>
+                                <option value="emergency">Emergency</option>
+                                <option value="regular">Regular</option>
+                                <option value="medical">Medical</option>
+                            </select>
+                        </div>
+                    </div>
+                `;
+            } else {
+                additionalFilters.innerHTML = '';
+            }
+        } else {
+            filtersDiv.style.display = 'none';
+        }
+    }
+
+    function generateSelectedReport() {
+        if (!selectedReportType) {
+            showNotification('Please select a report type first!', 'error');
+            return;
         }
         
-        if (autoRefreshEnabled) {
-            startAutoRefresh();
+        showLoading(`Generating ${selectedReportName} report...`);
+        
+        let url = `/admin/generate-pdf/${selectedReportType}`;
+        let params = [];
+        
+        // Add date filters if available
+        const dateFrom = document.getElementById('dateFrom')?.value;
+        const dateTo = document.getElementById('dateTo')?.value;
+        
+        if (dateFrom && dateTo) {
+            params.push(`date_from=${dateFrom}`);
+            params.push(`date_to=${dateTo}`);
+        }
+        
+        // Add additional filters for leave statistics
+        if (selectedReportType === 'leave_statistics') {
+            const status = document.getElementById('statusFilter')?.value;
+            const leaveType = document.getElementById('typeFilter')?.value;
+            
+            if (status) params.push(`status=${status}`);
+            if (leaveType) params.push(`leave_type=${leaveType}`);
+        }
+        
+        // Add suspicious flag if needed
+        if (selectedReportType === 'suspicious_activity') {
+            params.push('suspicious_only=true');
+        }
+        
+        if (params.length > 0) {
+            url += '?' + params.join('&');
+        }
+        
+        // Create a hidden iframe to download the PDF
+        const iframe = document.createElement('iframe');
+        iframe.style.display = 'none';
+        iframe.src = url;
+        document.body.appendChild(iframe);
+        
+        // Wait a bit and then hide loading
+        setTimeout(() => {
+            hideLoading();
+            
+            // Check if download started
+            setTimeout(() => {
+                iframe.remove();
+                showNotification(`${selectedReportName} report generated successfully!`, 'success');
+                
+                // Close the modal
+                const modal = bootstrap.Modal.getInstance(document.getElementById('reportModal'));
+                if (modal) modal.hide();
+                
+            }, 2000);
+            
+        }, 3000);
+    }
+
+    function exportLeavesData() {
+        showLoading('Exporting leaves data as CSV...');
+        
+        // Create a hidden iframe to download the CSV
+        const iframe = document.createElement('iframe');
+        iframe.style.display = 'none';
+        iframe.src = '/admin/export/leaves';
+        document.body.appendChild(iframe);
+        
+        setTimeout(() => {
+            hideLoading();
+            iframe.remove();
+            showNotification('Leaves data exported successfully as CSV!', 'success');
+        }, 2000);
+    }
+
+    function clearOldLogs() {
+        if (confirm('Are you sure you want to clear logs older than 30 days? This action cannot be undone.')) {
+            showLoading('Clearing old logs...');
+            
+            fetch('/admin/clear-old-logs')
+                .then(response => {
+                    hideLoading();
+                    if (response.ok) {
+                        return response.text();
+                    }
+                    throw new Error('Network response was not ok');
+                })
+                .then(data => {
+                    showNotification('Old logs cleared successfully!', 'success');
+                    // Refresh the page after a delay
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 1500);
+                })
+                .catch(error => {
+                    hideLoading();
+                    showNotification('Error clearing logs: ' + error.message, 'error');
+                });
         }
     }
 
@@ -471,327 +790,9 @@
         // Add click handlers for quick action buttons
         document.querySelectorAll('.quick-actions .btn').forEach(btn => {
             btn.addEventListener('click', function() {
-                logQuickAction(this.innerText.trim());
+                console.log(`Quick action: ${this.innerText.trim()}`);
             });
         });
-    }
-
-    function backupDatabase() {
-        if (confirm('Create database backup? This will export all system data to a secure file.')) {
-            showLoading('Creating backup...');
-            
-            fetch('/admin/export-data', {
-                method: 'GET',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-Token': getCsrfToken()
-                }
-            })
-            .then(response => response.json())
-            .then(data => {
-                hideLoading();
-                if (data.success) {
-                    showNotification('Backup created successfully! Download link will be available shortly.', 'success');
-                    // Log the action
-                    logAdminAction('BACKUP', 'SYSTEM', null, 'Database backup initiated');
-                } else {
-                    showNotification('Backup failed: ' + (data.error || 'Unknown error'), 'error');
-                }
-            })
-            .catch(error => {
-                hideLoading();
-                showNotification('Backup failed: ' + error.message, 'error');
-                console.error('Backup error:', error);
-            });
-        }
-    }
-
-function generateReports() {
-    const reportType = prompt('Select report type:\n1. Monthly Summary\n2. User Activity\n3. Leave Statistics\n4. Suspicious Activity\n\nEnter number (1-4):');
-    
-    if (!reportType || reportType < 1 || reportType > 4) return;
-    
-    const reportTypes = [
-        'monthly_summary',
-        'user_activity', 
-        'leave_statistics',
-        'suspicious_activity'
-    ];
-    
-    const selectedReport = reportTypes[parseInt(reportType) - 1];
-    const reportNames = [
-        'Monthly Summary',
-        'User Activity', 
-        'Leave Statistics',
-        'Suspicious Activity'
-    ];
-    
-    if (confirm(`Generate ${reportNames[parseInt(reportType)-1]} report as PDF?`)) {
-        showLoading(`Generating ${reportNames[parseInt(reportType)-1]} PDF report...`);
-        
-        // Use fetch API to download the file
-        fetch(`/admin/generate-pdf/${selectedReport}`)
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error('Network response was not ok');
-                }
-                return response.blob();
-            })
-            .then(blob => {
-                // Create a download link
-                const url = window.URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.style.display = 'none';
-                a.href = url;
-                a.download = `vit_report_${selectedReport}_${new Date().toISOString().slice(0,10)}.pdf`;
-                document.body.appendChild(a);
-                a.click();
-                
-                // Clean up
-                window.URL.revokeObjectURL(url);
-                document.body.removeChild(a);
-                
-                hideLoading();
-                showNotification(`PDF report downloaded successfully!`, 'success');
-            })
-            .catch(error => {
-                hideLoading();
-                showNotification(`Failed to generate PDF: ${error.message}`, 'error');
-                console.error('Error:', error);
-            });
-    }
-}
-
-function exportLogs() {
-    const format = confirm('Export logs as CSV? (Cancel for PDF)') ? 'csv' : 'pdf';
-    
-    if (format === 'pdf') {
-        showLoading('Generating logs PDF...');
-        
-        // Get date range
-        const today = new Date().toISOString().split('T')[0];
-        const lastMonth = new Date();
-        lastMonth.setMonth(lastMonth.getMonth() - 1);
-        const lastMonthStr = lastMonth.toISOString().split('T')[0];
-        
-        const dateRange = prompt('Enter date range (YYYY-MM-DD to YYYY-MM-DD) or leave empty for all:', 
-            `${lastMonthStr} to ${today}`);
-        
-        // Open PDF in new tab
-        let url = '/admin/generate-pdf/leave_statistics';
-        if (dateRange) {
-            const [date_from, date_to] = dateRange.split(' to ');
-            url += `?date_from=${date_from}&date_to=${date_to}`;
-        }
-        
-        window.open(url, '_blank');
-        
-        setTimeout(() => {
-            hideLoading();
-            showNotification('PDF report generated! Check your downloads.', 'success');
-        }, 2000);
-    } else {
-        // Existing CSV export code
-        const dateRange = prompt('Enter date range (YYYY-MM-DD to YYYY-MM-DD) or leave empty for all:', 
-            `${new Date().toISOString().split('T')[0]} to ${new Date().toISOString().split('T')[0]}`);
-        
-        showLoading(`Exporting logs as CSV...`);
-        
-        fetch('/admin/log-export', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRF-Token': getCsrfToken()
-            },
-            body: JSON.stringify({
-                format: 'csv',
-                date_range: dateRange,
-                export_type: 'logs'
-            })
-        })
-        .then(response => response.json())
-        .then(data => {
-            hideLoading();
-            if (data.success) {
-                showNotification(`Logs exported successfully as CSV!`, 'success');
-                
-                // Create download link
-                const blob = new Blob([data.csv_content || ''], 
-                    { type: 'text/csv' });
-                const url = window.URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = `admin_logs_${new Date().toISOString().split('T')[0]}.csv`;
-                document.body.appendChild(a);
-                a.click();
-                window.URL.revokeObjectURL(url);
-                document.body.removeChild(a);
-            } else {
-                showNotification('Export failed: ' + (data.error || 'Unknown error'), 'error');
-            }
-        })
-        .catch(error => {
-            hideLoading();
-            showNotification('Export failed: ' + error.message, 'error');
-            console.error('Export error:', error);
-        });
-    }
-}
-
-    function exportLogs() {
-        const format = confirm('Export logs as CSV? (Cancel for JSON)') ? 'csv' : 'json';
-        const dateRange = prompt('Enter date range (YYYY-MM-DD to YYYY-MM-DD) or leave empty for all:', 
-            `${new Date().toISOString().split('T')[0]} to ${new Date().toISOString().split('T')[0]}`);
-        
-        showLoading(`Exporting logs as ${format.toUpperCase()}...`);
-        
-        fetch('/admin/log-export', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRF-Token': getCsrfToken()
-            },
-            body: JSON.stringify({
-                format: format,
-                date_range: dateRange,
-                export_type: 'logs'
-            })
-        })
-        .then(response => response.json())
-        .then(data => {
-            hideLoading();
-            if (data.success) {
-                showNotification(`Logs exported successfully as ${format.toUpperCase()}!`, 'success');
-                
-                // Create download link
-                const blob = new Blob([JSON.stringify(data.logs || data)], 
-                    { type: format === 'csv' ? 'text/csv' : 'application/json' });
-                const url = window.URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = `admin_logs_${new Date().toISOString().split('T')[0]}.${format}`;
-                document.body.appendChild(a);
-                a.click();
-                window.URL.revokeObjectURL(url);
-                document.body.removeChild(a);
-            } else {
-                showNotification('Export failed: ' + (data.error || 'Unknown error'), 'error');
-            }
-        })
-        .catch(error => {
-            hideLoading();
-            showNotification('Export failed: ' + error.message, 'error');
-            console.error('Export error:', error);
-        });
-    }
-
-    function startAutoRefresh() {
-        if (refreshTimer) {
-            clearTimeout(refreshTimer);
-        }
-        
-        refreshTimer = setTimeout(() => {
-            if (autoRefreshEnabled && !document.hidden) {
-                refreshDashboard();
-            } else {
-                startAutoRefresh(); // Continue checking
-            }
-        }, 60000); // 60 seconds
-    }
-
-    function refreshDashboard() {
-        // Only refresh specific parts of the dashboard, not the whole page
-        fetch('/admin/dashboard/partial', {
-            method: 'GET',
-            headers: {
-                'X-Partial-Refresh': 'true'
-            }
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.stats) {
-                updateDashboardStats(data.stats);
-            }
-            if (data.recent_logs) {
-                updateRecentLogs(data.recent_logs);
-            }
-            showNotification('Dashboard refreshed', 'info', 2000);
-            startAutoRefresh(); // Restart timer
-        })
-        .catch(error => {
-            console.error('Refresh error:', error);
-            startAutoRefresh(); // Restart timer even on error
-        });
-    }
-
-    function toggleAutoRefresh() {
-        autoRefreshEnabled = !autoRefreshEnabled;
-        localStorage.setItem('admin_auto_refresh', autoRefreshEnabled);
-        
-        if (autoRefreshEnabled) {
-            startAutoRefresh();
-            showNotification('Auto-refresh enabled (60s)', 'success', 2000);
-        } else {
-            if (refreshTimer) {
-                clearTimeout(refreshTimer);
-                refreshTimer = null;
-            }
-            showNotification('Auto-refresh disabled', 'warning', 2000);
-        }
-    }
-
-    function updateDashboardStats(stats) {
-        // Update statistics cards
-        document.querySelectorAll('.stat-number').forEach((el, index) => {
-            const keys = ['total_students', 'total_proctors', 'total_supervisors', 
-                        'total_leaves', 'pending_leaves', 'suspicious_leaves'];
-            if (stats[keys[index]] !== undefined) {
-                el.textContent = stats[keys[index]];
-                el.classList.add('updated');
-                setTimeout(() => el.classList.remove('updated'), 1000);
-            }
-        });
-    }
-
-    function updateRecentLogs(logs) {
-        // Update recent logs section
-        const logsContainer = document.querySelector('.card-body[style*="max-height: 400px"]');
-        if (logsContainer && logs.length > 0) {
-            // Implementation to update logs display
-            showNotification('Recent activity updated', 'info', 1500);
-        }
-    }
-
-    function checkSystemStatus() {
-        fetch('/test')
-            .then(response => response.json())
-            .then(data => {
-                if (data.status === 'online') {
-                    // System is online
-                    updateSystemStatus(true);
-                }
-            })
-            .catch(error => {
-                console.warn('System status check failed:', error);
-                updateSystemStatus(false);
-            });
-    }
-
-    function updateSystemStatus(isOnline) {
-        const statusIndicator = document.createElement('div');
-        statusIndicator.className = `system-status ${isOnline ? 'online' : 'offline'}`;
-        statusIndicator.innerHTML = `
-            <i class="fas fa-circle ${isOnline ? 'text-success' : 'text-danger'}"></i>
-            <small>${isOnline ? 'System Online' : 'Connection Issues'}</small>
-        `;
-        
-        // Add to header if not already there
-        const existingStatus = document.querySelector('.system-status');
-        if (existingStatus) {
-            existingStatus.remove();
-        }
-        
-        document.querySelector('.d-flex.justify-content-between').appendChild(statusIndicator);
     }
 
     function showNotification(message, type = 'info', duration = 5000) {
@@ -870,30 +871,5 @@ function exportLogs() {
             overlay.style.display = 'none';
         }
     }
-
-    function getCsrfToken() {
-        // Get CSRF token from meta tag or form
-        return document.querySelector('meta[name="csrf-token"]')?.content || '';
-    }
-
-    function logQuickAction(action) {
-        console.log(`Quick action performed: ${action}`);
-        // Could send to analytics or log endpoint
-    }
-
-    function logAdminAction(action, targetType, targetId, details) {
-        console.log(`Admin Action: ${action} - ${targetType} ${targetId || ''} - ${details}`);
-        // In production, this would make an API call to log the action
-    }
-
-    // Export functions for external use
-    window.adminDashboard = {
-        backupDatabase,
-        generateReports,
-        exportLogs,
-        toggleAutoRefresh,
-        showNotification,
-        refreshDashboard
-    };
 </script>
 {% endblock %}
