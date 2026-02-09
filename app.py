@@ -572,10 +572,40 @@ def hostel_login():
         
         supervisor = HostelSupervisor.login(supervisor_id, password)
         if supervisor:
+            # Log attempted login with IP
+            ip_address = request.remote_addr
+            print(f"Hostel login attempt: {supervisor_id} from IP: {ip_address}")
+            
+            # Additional security: Log successful login
+            db = Database()
+            connection = db.get_connection()
+            try:
+                with connection.cursor() as cursor:
+                    # First, check if login action is allowed in verification_logs
+                    # We'll use admin_logs instead since it's more appropriate
+                    cursor.execute("""
+                        INSERT INTO admin_logs 
+                        (admin_id, action_type, target_type, target_id, details, ip_address, user_agent)
+                        VALUES (%s, %s, %s, %s, %s, %s, %s)
+                    """, (
+                        supervisor_id,
+                        'LOGIN',
+                        'SUPERVISOR',
+                        supervisor_id,
+                        f'Hostel supervisor login from IP: {ip_address}',
+                        ip_address,
+                        request.headers.get('User-Agent', '')
+                    ))
+                    connection.commit()
+            except Exception as e:
+                print(f"Error logging supervisor login: {e}")
+            finally:
+                connection.close()
+            
             session['supervisor_id'] = supervisor['supervisor_id']
             session['supervisor_name'] = supervisor['name']
             session['hostel_block'] = supervisor['hostel_block']
-            flash(f'Welcome, {supervisor["name"]}!', 'success')
+            flash(f'Welcome, {supervisor["name"]}! You are assigned to Block {supervisor["hostel_block"]}', 'success')
             return redirect(url_for('hostel_verify'))
         
         flash('Invalid supervisor ID or password', 'error')
